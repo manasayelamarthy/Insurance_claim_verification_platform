@@ -1,0 +1,9 @@
+DIAGNOSTIC REPORT
+
+Patient Name: Priya Sharma
+Member ID: MEM-1001
+Hospital: Green Valley Hospital
+Report Date: 2026-10-05
+Test: Complete Blood Count
+Finding: Findings consistent with acute infection.
+Ordering Doctor: Dr. Neha Rao

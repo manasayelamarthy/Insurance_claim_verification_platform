@@ -1,0 +1,11 @@
+DISCHARGE SUMMARY
+
+Patient Name: Ravi Kumar
+Member ID: MEM-1002
+Hospital: City Care Hospital
+Admission Date: 2026-10-10
+Discharge Date: 2026-10-15
+Diagnosis: Gallstones
+Procedure: Laparoscopic cholecystectomy
+Medical Necessity: Planned surgery recommended after diagnostic confirmation.
+Condition at Discharge: Stable

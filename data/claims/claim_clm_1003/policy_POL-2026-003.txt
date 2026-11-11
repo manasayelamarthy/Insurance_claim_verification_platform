@@ -1,0 +1,22 @@
+HEALTH INSURANCE POLICY SCHEDULE
+
+Policy Number: POL-2026-003
+Member ID: MEM-1003
+Policyholder: Mina Joseph
+Insurer: SecureHealth Insurance Ltd
+Policy Start Date: 2026-01-01
+Policy End Date: 2026-12-31
+Coverage Type: Individual Health Insurance
+Sum Insured: 200000.00
+Annual Deductible: 10000.00
+Co-payment: 0%
+Network Hospital Required: Yes
+
+Covered Services:
+Medically necessary hospitalization and treatment for illness or injury are
+covered subject to the policy terms.
+
+Room Limit: 4000.00 per day
+Waiting Period for Listed Procedures: 24 months
+Excluded Services: Cosmetic surgery, aesthetic procedures, personal comfort
+items, and treatment with no medical necessity.

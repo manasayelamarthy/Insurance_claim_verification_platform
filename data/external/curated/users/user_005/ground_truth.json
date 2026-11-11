@@ -1,0 +1,107 @@
+{
+  "hospital_bill": {
+    "hospital": {
+      "name": "Fortis Escorts Heart Institute",
+      "address": "Okhla Road, New Delhi, Delhi 110025",
+      "npi": "1847592038"
+    },
+    "patient": {
+      "name": "Sneha Iyer",
+      "dob": "1988-03-05",
+      "mrn": "MRN-5920183"
+    },
+    "diagnosis": "Essential Hypertension",
+    "icd_10": "I10",
+    "hospital_course": "Admitted for hypertensive urgency. Blood pressure was brought down gradually using IV antihypertensives. Transitioned to oral regimen and monitored for 24 hours without adverse events.",
+    "procedures": [
+      {
+        "desc": "Echocardiogram Complete",
+        "cpt": "93306",
+        "price": 524
+      },
+      {
+        "desc": "Electrocardiogram, Routine ECG",
+        "cpt": "93000",
+        "price": 148
+      },
+      {
+        "desc": "Emergency Room Level 3",
+        "cpt": "99283",
+        "price": 1193
+      },
+      {
+        "desc": "Pharmacy Services",
+        "cpt": "0250",
+        "price": 302
+      },
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 233
+      }
+    ],
+    "medications": [
+      "Amlodipine 5mg PO Daily",
+      "Losartan 50mg PO Daily",
+      "Hydrochlorothiazide 25mg PO Daily"
+    ],
+    "insurance": "ICICI Lombard General Insurance",
+    "financials": {
+      "total_charges": 2400,
+      "insurance_adjustment": 1860,
+      "patient_responsibility": 540
+    }
+  },
+  "discharge_summary": {
+    "hospital": {
+      "name": "Fortis Escorts Heart Institute",
+      "address": "Okhla Road, New Delhi, Delhi 110025",
+      "npi": "1847592038"
+    },
+    "patient": {
+      "name": "Sneha Iyer",
+      "dob": "1988-03-05",
+      "mrn": "MRN-5920183"
+    },
+    "diagnosis": "Hyperlipidemia",
+    "icd_10": "E78.5",
+    "hospital_course": "Incidental finding of elevated cholesterol during routine screening. Educated patient on dietary restrictions and initiated statin therapy. Tolerated medication well.",
+    "procedures": [
+      {
+        "desc": "Lipid Panel",
+        "cpt": "80061",
+        "price": 92
+      },
+      {
+        "desc": "Venipuncture",
+        "cpt": "36415",
+        "price": 32
+      },
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 177
+      },
+      {
+        "desc": "Room and Board - Semi-Private",
+        "cpt": "0120",
+        "price": 943
+      },
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 138
+      }
+    ],
+    "medications": [
+      "Rosuvastatin 10mg PO Daily",
+      "Atorvastatin 20mg PO Daily"
+    ],
+    "insurance": "Max Bupa Health Insurance",
+    "financials": {
+      "total_charges": 1382,
+      "insurance_adjustment": 1054,
+      "patient_responsibility": 328
+    }
+  }
+}

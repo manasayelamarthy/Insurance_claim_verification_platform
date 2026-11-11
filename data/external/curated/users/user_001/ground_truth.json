@@ -1,0 +1,107 @@
+{
+  "hospital_bill": {
+    "hospital": {
+      "name": "Lilavati Hospital",
+      "address": "Bandra Reclamation, Mumbai, Maharashtra 400050",
+      "npi": "1482950384"
+    },
+    "patient": {
+      "name": "Amit Singh",
+      "dob": "1978-11-03",
+      "mrn": "MRN-1039485"
+    },
+    "diagnosis": "Hyperlipidemia",
+    "icd_10": "E78.5",
+    "hospital_course": "Incidental finding of elevated cholesterol during routine screening. Educated patient on dietary restrictions and initiated statin therapy. Tolerated medication well.",
+    "procedures": [
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 243
+      },
+      {
+        "desc": "Emergency Room Level 3",
+        "cpt": "99283",
+        "price": 801
+      },
+      {
+        "desc": "Venipuncture",
+        "cpt": "36415",
+        "price": 15
+      },
+      {
+        "desc": "Pharmacy Services",
+        "cpt": "0250",
+        "price": 393
+      },
+      {
+        "desc": "Hepatic Function Panel",
+        "cpt": "80076",
+        "price": 56
+      }
+    ],
+    "medications": [
+      "Atorvastatin 20mg PO Daily",
+      "Rosuvastatin 10mg PO Daily"
+    ],
+    "insurance": "HDFC ERGO General Insurance",
+    "financials": {
+      "total_charges": 1508,
+      "insurance_adjustment": 1309,
+      "patient_responsibility": 199
+    }
+  },
+  "discharge_summary": {
+    "hospital": {
+      "name": "Lilavati Hospital",
+      "address": "Bandra Reclamation, Mumbai, Maharashtra 400050",
+      "npi": "1482950384"
+    },
+    "patient": {
+      "name": "Amit Singh",
+      "dob": "1978-11-03",
+      "mrn": "MRN-1039485"
+    },
+    "diagnosis": "Hyperlipidemia",
+    "icd_10": "E78.5",
+    "hospital_course": "Incidental finding of elevated cholesterol during routine screening. Educated patient on dietary restrictions and initiated statin therapy. Tolerated medication well.",
+    "procedures": [
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 264
+      },
+      {
+        "desc": "Venipuncture",
+        "cpt": "36415",
+        "price": 21
+      },
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 189
+      },
+      {
+        "desc": "Emergency Room Level 3",
+        "cpt": "99283",
+        "price": 767
+      },
+      {
+        "desc": "Pharmacy Services",
+        "cpt": "0250",
+        "price": 283
+      }
+    ],
+    "medications": [
+      "Rosuvastatin 10mg PO Daily",
+      "Atorvastatin 20mg PO Daily",
+      "Ezetimibe 10mg PO Daily"
+    ],
+    "insurance": "Religare Health Insurance",
+    "financials": {
+      "total_charges": 1524,
+      "insurance_adjustment": 1080,
+      "patient_responsibility": 444
+    }
+  }
+}

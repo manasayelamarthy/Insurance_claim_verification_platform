@@ -1,0 +1,13 @@
+HEALTH INSURANCE CLAIM FORM
+
+Claim Number: CLM-1001
+Policy Number: POL-2026-001
+Member ID: MEM-1001
+Patient Name: Priya Sharma
+Hospital: Green Valley Hospital
+Admission Date: 2026-10-04
+Discharge Date: 2026-10-07
+Diagnosis: Acute appendicitis
+Treatment: Appendectomy
+Claimed Amount: 42000.00
+Network Hospital: Yes

@@ -1,0 +1,95 @@
+{
+  "hospital_bill": {
+    "hospital": {
+      "name": "Apollo Health City",
+      "address": "Jubilee Hills, Hyderabad, Telangana 500033",
+      "npi": "1932485721"
+    },
+    "patient": {
+      "name": "Neha Gupta",
+      "dob": "1995-05-20",
+      "mrn": "MRN-2019384"
+    },
+    "diagnosis": "Type 2 Diabetes Mellitus",
+    "icd_10": "E11.9",
+    "hospital_course": "Patient presented with elevated blood glucose levels. Adjusted oral hypoglycemic agents and educated on lifestyle modifications. Blood sugars stabilized during admission.",
+    "procedures": [
+      {
+        "desc": "Diabetic Retinal Exam",
+        "cpt": "92250",
+        "price": 224
+      },
+      {
+        "desc": "Office Visit, Est Patient",
+        "cpt": "99213",
+        "price": 129
+      },
+      {
+        "desc": "Room and Board - Semi-Private",
+        "cpt": "0120",
+        "price": 1201
+      },
+      {
+        "desc": "Hemoglobin A1c (HbA1c)",
+        "cpt": "83036",
+        "price": 127
+      },
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 183
+      },
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 232
+      }
+    ],
+    "medications": [
+      "Insulin Glargine 10 units SubQ Nightly"
+    ],
+    "insurance": "ICICI Lombard General Insurance",
+    "financials": {
+      "total_charges": 2096,
+      "insurance_adjustment": 1871,
+      "patient_responsibility": 225
+    }
+  },
+  "discharge_summary": {
+    "hospital": {
+      "name": "Apollo Health City",
+      "address": "Jubilee Hills, Hyderabad, Telangana 500033",
+      "npi": "1932485721"
+    },
+    "patient": {
+      "name": "Neha Gupta",
+      "dob": "1995-05-20",
+      "mrn": "MRN-2019384"
+    },
+    "diagnosis": "Hyperlipidemia",
+    "icd_10": "E78.5",
+    "hospital_course": "Incidental finding of elevated cholesterol during routine screening. Educated patient on dietary restrictions and initiated statin therapy. Tolerated medication well.",
+    "procedures": [
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 60
+      },
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 264
+      }
+    ],
+    "medications": [
+      "Ezetimibe 10mg PO Daily",
+      "Rosuvastatin 10mg PO Daily"
+    ],
+    "insurance": "Max Bupa Health Insurance",
+    "financials": {
+      "total_charges": 324,
+      "insurance_adjustment": 204,
+      "patient_responsibility": 120
+    }
+  }
+}

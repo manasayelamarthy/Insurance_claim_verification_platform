@@ -1,0 +1,11 @@
+DISCHARGE SUMMARY
+
+Patient Name: Mina Joseph
+Member ID: MEM-1003
+Hospital: BrightLife Aesthetic Center
+Admission Date: 2026-10-20
+Discharge Date: 2026-10-20
+Diagnosis: None stated
+Procedure: Elective cosmetic rhinoplasty
+Medical Necessity: Not stated.
+Condition at Discharge: Stable

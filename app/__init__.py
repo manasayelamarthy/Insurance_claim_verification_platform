@@ -1,1 +1,1 @@
-"""Phase 1 document intelligence backend."""
+"""Insurance claim verification backend."""

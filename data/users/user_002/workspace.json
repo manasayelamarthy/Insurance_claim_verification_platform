@@ -1,6 +1,0 @@
-{
-  "user_id": "user_002",
-  "display_name": "Ravi Procurement",
-  "allowed_document_types": ["invoice", "purchase_order", "contract"],
-  "seed_dataset": "invoice-review"
-}

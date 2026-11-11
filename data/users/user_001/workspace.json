@@ -1,6 +1,0 @@
-{
-  "user_id": "user_001",
-  "display_name": "Asha Finance",
-  "allowed_document_types": ["invoice", "purchase_order", "contract"],
-  "seed_dataset": "invoice-review"
-}

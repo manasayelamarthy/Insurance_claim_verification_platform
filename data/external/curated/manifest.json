@@ -1,0 +1,80 @@
+{
+  "users": [
+    {
+      "user_id": "user_001",
+      "patient": "Amit Singh",
+      "mrn": "MRN-1039485",
+      "hospital": "Lilavati Hospital",
+      "insurance": "HDFC ERGO General Insurance",
+      "documents": [
+        "hospital_bill.jpg",
+        "discharge_summary.jpg",
+        "ground_truth.json"
+      ]
+    },
+    {
+      "user_id": "user_002",
+      "patient": "Vikram Reddy",
+      "mrn": "MRN-3920184",
+      "hospital": "Manipal Hospital",
+      "insurance": "HDFC ERGO General Insurance",
+      "documents": [
+        "hospital_bill.jpg",
+        "discharge_summary.jpg",
+        "ground_truth.json"
+      ]
+    },
+    {
+      "user_id": "user_003",
+      "patient": "Neha Gupta",
+      "mrn": "MRN-2019384",
+      "hospital": "Apollo Health City",
+      "insurance": "ICICI Lombard General Insurance",
+      "documents": [
+        "hospital_bill.jpg",
+        "discharge_summary.jpg",
+        "ground_truth.json"
+      ]
+    },
+    {
+      "user_id": "user_004",
+      "patient": "Rohan Sharma",
+      "mrn": "MRN-8472910",
+      "hospital": "Christian Medical College (CMC)",
+      "insurance": "Star Health and Allied Insurance",
+      "documents": [
+        "hospital_bill.jpg",
+        "discharge_summary.jpg",
+        "ground_truth.json"
+      ]
+    },
+    {
+      "user_id": "user_005",
+      "patient": "Sneha Iyer",
+      "mrn": "MRN-5920183",
+      "hospital": "Fortis Escorts Heart Institute",
+      "insurance": "ICICI Lombard General Insurance",
+      "documents": [
+        "hospital_bill.jpg",
+        "discharge_summary.jpg",
+        "ground_truth.json"
+      ]
+    }
+  ],
+  "policy_insurers": [
+    {
+      "insurer": "hdfc-ergo",
+      "pdf_count": 2
+    },
+    {
+      "insurer": "icici-lombard",
+      "pdf_count": 2
+    },
+    {
+      "insurer": "star-health",
+      "pdf_count": 1
+    }
+  ],
+  "policy_pdf_count": 5,
+  "user_policy_mapping": "user_policy_mapping.json"
+}

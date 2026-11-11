@@ -1,0 +1,11 @@
+DISCHARGE SUMMARY
+
+Patient Name: Priya Sharma
+Member ID: MEM-1001
+Hospital: Green Valley Hospital
+Admission Date: 2026-10-04
+Discharge Date: 2026-10-07
+Diagnosis: Acute appendicitis
+Procedure: Laparoscopic appendectomy
+Medical Necessity: Emergency treatment recommended by the attending surgeon.
+Condition at Discharge: Stable

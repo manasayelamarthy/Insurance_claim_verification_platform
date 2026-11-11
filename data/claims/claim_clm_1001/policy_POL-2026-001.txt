@@ -1,0 +1,23 @@
+HEALTH INSURANCE POLICY SCHEDULE
+
+Policy Number: POL-2026-001
+Member ID: MEM-1001
+Policyholder: Priya Sharma
+Insurer: SecureHealth Insurance Ltd
+Policy Start Date: 2026-01-01
+Policy End Date: 2026-12-31
+Coverage Type: Individual Health Insurance
+Sum Insured: 500000.00
+Annual Deductible: 0.00
+Co-payment: 0%
+Network Hospital Required: Yes
+
+Covered Services:
+Hospitalization, medically necessary surgery, room charges within the selected
+plan limit, diagnostic tests ordered during hospitalization, and prescribed
+medicines are covered.
+
+Room Limit: 5000.00 per day
+Waiting Period for Listed Procedures: 24 months
+Excluded Services: Cosmetic surgery, non-prescribed supplements, and treatment
+that is not medically necessary.

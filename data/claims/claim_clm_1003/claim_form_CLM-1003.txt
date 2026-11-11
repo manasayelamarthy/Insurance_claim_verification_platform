@@ -1,0 +1,13 @@
+HEALTH INSURANCE CLAIM FORM
+
+Claim Number: CLM-1003
+Policy Number: POL-2026-003
+Member ID: MEM-1003
+Patient Name: Mina Joseph
+Hospital: BrightLife Aesthetic Center
+Admission Date: 2026-10-20
+Discharge Date: 2026-10-20
+Diagnosis: None stated
+Treatment: Elective cosmetic rhinoplasty
+Claimed Amount: 35000.00
+Network Hospital: No

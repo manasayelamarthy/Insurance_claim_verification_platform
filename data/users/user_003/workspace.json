@@ -1,6 +1,0 @@
-{
-  "user_id": "user_003",
-  "display_name": "Mina Compliance",
-  "allowed_document_types": ["invoice", "purchase_order", "contract"],
-  "seed_dataset": "invoice-review"
-}

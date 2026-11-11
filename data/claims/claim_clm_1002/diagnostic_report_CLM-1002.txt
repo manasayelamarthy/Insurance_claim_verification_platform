@@ -1,0 +1,9 @@
+DIAGNOSTIC REPORT
+
+Patient Name: Ravi Kumar
+Member ID: MEM-1002
+Hospital: City Care Hospital
+Report Date: 2026-10-11
+Test: Abdominal Ultrasound
+Finding: Gallstones identified.
+Ordering Doctor: Dr. Arjun Mehta

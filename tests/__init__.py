@@ -1,1 +1,1 @@
-"""Tests for the document intelligence backend."""
+"""Tests for the insurance claim verification platform."""

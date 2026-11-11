@@ -1,0 +1,80 @@
+{
+  "description": "Policy PDF assigned to each curated insurance-claim user. Policy terms must be read from the linked PDF.",
+  "users": [
+    {
+      "user_id": "user_001",
+      "patient_name": "Amit Singh",
+      "member_id": "MRN-1039485",
+      "hospital": "Lilavati Hospital",
+      "insurer": "HDFC ERGO General Insurance",
+      "policy_document": {
+        "file": "policies/hdfc-ergo/energy-diabetes-hypertension__wordings.pdf",
+        "insurer_folder": "hdfc-ergo",
+        "policy_name": "Energy Diabetes Hypertension",
+        "document_type": "Wordings",
+        "format": "PDF",
+        "exists": true
+      }
+    },
+    {
+      "user_id": "user_002",
+      "patient_name": "Vikram Reddy",
+      "member_id": "MRN-3920184",
+      "hospital": "Manipal Hospital",
+      "insurer": "HDFC ERGO General Insurance",
+      "policy_document": {
+        "file": "policies/hdfc-ergo/group-health-insurance__wordings.pdf",
+        "insurer_folder": "hdfc-ergo",
+        "policy_name": "Group Health Insurance",
+        "document_type": "Wordings",
+        "format": "PDF",
+        "exists": true
+      }
+    },
+    {
+      "user_id": "user_003",
+      "patient_name": "Neha Gupta",
+      "member_id": "MRN-2019384",
+      "hospital": "Apollo Health City",
+      "insurer": "ICICI Lombard General Insurance",
+      "policy_document": {
+        "file": "policies/icici-lombard/complete-health-insurance-health-shield__wordings.pdf",
+        "insurer_folder": "icici-lombard",
+        "policy_name": "Complete Health Insurance Health Shield",
+        "document_type": "Wordings",
+        "format": "PDF",
+        "exists": true
+      }
+    },
+    {
+      "user_id": "user_004",
+      "patient_name": "Rohan Sharma",
+      "member_id": "MRN-8472910",
+      "hospital": "Christian Medical College (CMC)",
+      "insurer": "Star Health and Allied Insurance",
+      "policy_document": {
+        "file": "policies/star-health/family-health-optima__wordings.pdf",
+        "insurer_folder": "star-health",
+        "policy_name": "Family Health Optima",
+        "document_type": "Wordings",
+        "format": "PDF",
+        "exists": true
+      }
+    },
+    {
+      "user_id": "user_005",
+      "patient_name": "Sneha Iyer",
+      "member_id": "MRN-5920183",
+      "hospital": "Fortis Escorts Heart Institute",
+      "insurer": "ICICI Lombard General Insurance",
+      "policy_document": {
+        "file": "policies/icici-lombard/health-elite-plus__wordings.pdf",
+        "insurer_folder": "icici-lombard",
+        "policy_name": "Health Elite Plus",
+        "document_type": "Wordings",
+        "format": "PDF",
+        "exists": true
+      }
+    }
+  ]
+}

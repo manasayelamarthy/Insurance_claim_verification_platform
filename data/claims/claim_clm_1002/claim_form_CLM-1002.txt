@@ -1,0 +1,13 @@
+HEALTH INSURANCE CLAIM FORM
+
+Claim Number: CLM-1002
+Policy Number: POL-2026-002
+Member ID: MEM-1002
+Patient Name: Ravi Kumar
+Hospital: City Care Hospital
+Admission Date: 2026-10-10
+Discharge Date: 2026-10-15
+Diagnosis: Gallstones
+Treatment: Laparoscopic cholecystectomy
+Claimed Amount: 80000.00
+Network Hospital: No

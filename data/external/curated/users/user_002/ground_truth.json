@@ -1,0 +1,106 @@
+{
+  "hospital_bill": {
+    "hospital": {
+      "name": "Manipal Hospital",
+      "address": "Old Airport Road, Bengaluru, Karnataka 560017",
+      "npi": "1728394051"
+    },
+    "patient": {
+      "name": "Vikram Reddy",
+      "dob": "1982-09-30",
+      "mrn": "MRN-3920184"
+    },
+    "diagnosis": "Type 2 Diabetes Mellitus",
+    "icd_10": "E11.9",
+    "hospital_course": "Patient presented with elevated blood glucose levels. Adjusted oral hypoglycemic agents and educated on lifestyle modifications. Blood sugars stabilized during admission.",
+    "procedures": [
+      {
+        "desc": "Diabetic Retinal Exam",
+        "cpt": "92250",
+        "price": 234
+      },
+      {
+        "desc": "Room and Board - Semi-Private",
+        "cpt": "0120",
+        "price": 955
+      },
+      {
+        "desc": "Pharmacy Services",
+        "cpt": "0250",
+        "price": 77
+      },
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 35
+      }
+    ],
+    "medications": [
+      "Metformin 500mg PO BID",
+      "Insulin Glargine 10 units SubQ Nightly"
+    ],
+    "insurance": "HDFC ERGO General Insurance",
+    "financials": {
+      "total_charges": 1301,
+      "insurance_adjustment": 883,
+      "patient_responsibility": 418
+    }
+  },
+  "discharge_summary": {
+    "hospital": {
+      "name": "Manipal Hospital",
+      "address": "Old Airport Road, Bengaluru, Karnataka 560017",
+      "npi": "1728394051"
+    },
+    "patient": {
+      "name": "Vikram Reddy",
+      "dob": "1982-09-30",
+      "mrn": "MRN-3920184"
+    },
+    "diagnosis": "Essential Hypertension",
+    "icd_10": "I10",
+    "hospital_course": "Admitted for hypertensive urgency. Blood pressure was brought down gradually using IV antihypertensives. Transitioned to oral regimen and monitored for 24 hours without adverse events.",
+    "procedures": [
+      {
+        "desc": "Lipid Panel",
+        "cpt": "80061",
+        "price": 88
+      },
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 135
+      },
+      {
+        "desc": "Room and Board - Semi-Private",
+        "cpt": "0120",
+        "price": 1213
+      },
+      {
+        "desc": "Echocardiogram Complete",
+        "cpt": "93306",
+        "price": 313
+      },
+      {
+        "desc": "Basic Metabolic Panel (BMP)",
+        "cpt": "80048",
+        "price": 58
+      },
+      {
+        "desc": "Emergency Room Level 3",
+        "cpt": "99283",
+        "price": 960
+      }
+    ],
+    "medications": [
+      "Amlodipine 5mg PO Daily",
+      "Hydrochlorothiazide 25mg PO Daily"
+    ],
+    "insurance": "Max Bupa Health Insurance",
+    "financials": {
+      "total_charges": 2767,
+      "insurance_adjustment": 2083,
+      "patient_responsibility": 684
+    }
+  }
+}

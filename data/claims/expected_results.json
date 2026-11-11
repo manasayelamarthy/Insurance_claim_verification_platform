@@ -1,0 +1,27 @@
+[
+  {
+    "claim_id": "CLM-1001",
+    "folder": "claim_clm_1001",
+    "expected_decision": "eligible",
+    "expected_claimed_amount": "42000.00",
+    "expected_eligible_amount": "42000.00",
+    "expected_payable_amount": "42000.00"
+  },
+  {
+    "claim_id": "CLM-1002",
+    "folder": "claim_clm_1002",
+    "expected_decision": "partially_eligible",
+    "expected_claimed_amount": "80000.00",
+    "expected_eligible_amount_before_copay": "68000.00",
+    "expected_copay_percent": "20",
+    "expected_payable_amount": "54400.00"
+  },
+  {
+    "claim_id": "CLM-1003",
+    "folder": "claim_clm_1003",
+    "expected_decision": "not_eligible",
+    "expected_claimed_amount": "35000.00",
+    "expected_eligible_amount": "0.00",
+    "expected_payable_amount": "0.00"
+  }
+]

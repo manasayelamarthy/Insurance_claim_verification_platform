@@ -1,0 +1,101 @@
+{
+  "hospital_bill": {
+    "hospital": {
+      "name": "Christian Medical College (CMC)",
+      "address": "Ida Scudder Road, Vellore, Tamil Nadu 632004",
+      "npi": "1958473029"
+    },
+    "patient": {
+      "name": "Rohan Sharma",
+      "dob": "1985-04-12",
+      "mrn": "MRN-8472910"
+    },
+    "diagnosis": "Hyperlipidemia",
+    "icd_10": "E78.5",
+    "hospital_course": "Incidental finding of elevated cholesterol during routine screening. Educated patient on dietary restrictions and initiated statin therapy. Tolerated medication well.",
+    "procedures": [
+      {
+        "desc": "Room and Board - Semi-Private",
+        "cpt": "0120",
+        "price": 971
+      },
+      {
+        "desc": "Lipid Panel",
+        "cpt": "80061",
+        "price": 36
+      },
+      {
+        "desc": "Venipuncture",
+        "cpt": "36415",
+        "price": 17
+      },
+      {
+        "desc": "Medical/Surgical Supplies",
+        "cpt": "0270",
+        "price": 135
+      }
+    ],
+    "medications": [
+      "Ezetimibe 10mg PO Daily",
+      "Atorvastatin 20mg PO Daily"
+    ],
+    "insurance": "Star Health and Allied Insurance",
+    "financials": {
+      "total_charges": 1159,
+      "insurance_adjustment": 730,
+      "patient_responsibility": 429
+    }
+  },
+  "discharge_summary": {
+    "hospital": {
+      "name": "Christian Medical College (CMC)",
+      "address": "Ida Scudder Road, Vellore, Tamil Nadu 632004",
+      "npi": "1958473029"
+    },
+    "patient": {
+      "name": "Rohan Sharma",
+      "dob": "1985-04-12",
+      "mrn": "MRN-8472910"
+    },
+    "diagnosis": "Acute Bronchitis",
+    "icd_10": "J20.9",
+    "hospital_course": "Patient presented with persistent cough and shortness of breath. Chest X-Ray confirmed no pneumonia. Treated with bronchodilators and a short course of oral steroids. Symptoms improved significantly.",
+    "procedures": [
+      {
+        "desc": "Spirometry",
+        "cpt": "94010",
+        "price": 137
+      },
+      {
+        "desc": "Chest X-Ray, 1 View",
+        "cpt": "71045",
+        "price": 192
+      },
+      {
+        "desc": "IV Therapy",
+        "cpt": "0260",
+        "price": 155
+      },
+      {
+        "desc": "Complete Blood Count (CBC)",
+        "cpt": "85025",
+        "price": 71
+      },
+      {
+        "desc": "Room and Board - Semi-Private",
+        "cpt": "0120",
+        "price": 1432
+      }
+    ],
+    "medications": [
+      "Azithromycin 250mg PO Daily x 5 Days",
+      "Prednisone 20mg PO Daily"
+    ],
+    "insurance": "HDFC ERGO General Insurance",
+    "financials": {
+      "total_charges": 1987,
+      "insurance_adjustment": 1386,
+      "patient_responsibility": 601
+    }
+  }
+}
