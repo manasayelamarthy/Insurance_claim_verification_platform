@@ -11,6 +11,8 @@ identity fields, and gives a claims officer a review-ready result.
 - Extract text from hospital bill and discharge-summary images with Tesseract
 - Read assigned policy PDFs
 - Compare OCR identity fields with the reference ground truth
+- Calculate eligible amount, co-payment, deductible, and payable amount
+- Detect excluded treatment and network-hospital violations
 - Return a human-review recommendation without making an automatic denial
 
 ## Run tests
@@ -36,14 +38,21 @@ Start the API and browser interface:
 Open `http://127.0.0.1:8000`. Select one of the five users and click
 **Review claim**.
 
+The synthetic claim decision API is also available at:
+
+```text
+GET /api/claims
+GET /api/claims/CLM-1001/decision
+```
+
 The workflow is:
 
 ```text
-Select user
-→ OCR hospital bill and discharge summary
-→ Load assigned policy PDF
-→ Validate patient, hospital, and diagnosis
-→ Show evidence and manual-review recommendation
+Select claim
+→ Read claim form, bill, and policy
+→ Apply exclusions, room limits, co-payment, and deductible
+→ Calculate payable amount
+→ Show decision reasons for human review
 ```
 
 The curated external verification dataset is under `data/external/curated/`.
