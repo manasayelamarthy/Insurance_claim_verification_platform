@@ -3,54 +3,178 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Insurance Claim Verification Platform</title>
+  <title>Claims Review Dashboard</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 32px auto; padding: 0 16px; }
-    select, button { padding: 8px; margin: 8px 0; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-top: 16px; }
-    pre { white-space: pre-wrap; background: #f5f5f5; padding: 12px; max-height: 360px; overflow: auto; }
-    .ok { color: green; } .warn { color: #a15c00; }
+    :root { font-family: Arial, sans-serif; color: #172033; background: #f4f6fa; }
+    body { max-width: 1180px; margin: 0 auto; padding: 28px 18px 48px; }
+    header { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+    h1, h2, h3 { margin-top: 0; }
+    .muted { color: #65708a; }
+    .layout { display: grid; grid-template-columns: 280px 1fr; gap: 18px; margin-top: 22px; }
+    .card, .claim { background: white; border: 1px solid #dfe4ee; border-radius: 10px; padding: 16px; }
+    .claim { display: block; width: 100%; text-align: left; cursor: pointer; margin-bottom: 10px; }
+    .claim:hover, .claim.active { border-color: #356ae6; box-shadow: 0 2px 8px #1e3a8a18; }
+    .claim strong, .claim span { display: block; }
+    .claim span { color: #65708a; font-size: 13px; margin-top: 5px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .metric { background: #f7f9fc; border-radius: 8px; padding: 12px; }
+    .metric strong { display: block; font-size: 20px; margin-top: 5px; }
+    .finding { border-left: 4px solid #d99a22; padding: 9px 12px; background: #fffaf0; margin: 8px 0; }
+    .finding.high { border-color: #d14343; background: #fff5f5; }
+    .finding strong { text-transform: uppercase; font-size: 12px; }
+    button { border: 1px solid #cbd3e1; border-radius: 6px; background: white; padding: 9px 12px; }
+    .primary { color: white; background: #356ae6; border-color: #356ae6; }
+    pre { white-space: pre-wrap; max-height: 260px; overflow: auto; background: #f7f9fc; padding: 12px; }
+    .error { color: #b42318; }
+    textarea, input { width: 100%; box-sizing: border-box; padding: 9px; margin: 5px 0 10px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .history { border-top: 1px solid #e4e8f0; margin-top: 12px; padding-top: 10px; }
+    @media (max-width: 760px) { .layout, .grid { grid-template-columns: 1fr; } header { display: block; } }
   </style>
 </head>
 <body>
-  <h1>Insurance Claim Verification Platform</h1>
-  <p>Select a user to OCR the hospital bill and discharge summary and load the assigned policy.</p>
-  <select id="users"></select>
-  <button id="review">Review claim</button>
-  <div id="result"></div>
+  <header>
+    <div>
+      <h1>Claims Review Dashboard</h1>
+      <p class="muted">Review decisions, anomaly signals, and supporting documents before approval.</p>
+    </div>
+    <button class="primary" id="refresh">Refresh queue</button>
+  </header>
+  <div class="layout">
+    <aside>
+      <div class="card">
+        <h2>Claim queue</h2>
+        <div id="claims"><p class="muted">Loading claims...</p></div>
+      </div>
+    </aside>
+    <main id="details">
+      <div class="card"><p class="muted">Select a claim to begin review.</p></div>
+    </main>
+  </div>
   <script>
-    const users = document.querySelector("#users");
-    const result = document.querySelector("#result");
-    fetch("/api/users").then(response => response.json()).then(items => {
-      items.forEach(item => {
-        const option = document.createElement("option");
-        option.value = item.user_id;
-        option.textContent = `${item.user_id} - ${item.patient_name} - ${item.hospital}`;
-        users.appendChild(option);
-      });
-    });
-    document.querySelector("#review").addEventListener("click", async () => {
-      result.textContent = "Running OCR...";
-      const response = await fetch(`/api/users/${users.value}/review`);
+    const claimsElement = document.querySelector("#claims");
+    const detailsElement = document.querySelector("#details");
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
+    const money = value => `₹${Number(value).toLocaleString("en-IN", {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    })}`;
+
+    async function getJson(url, options = {}) {
+      const response = await fetch(url, options);
       const data = await response.json();
-      if (!response.ok) {
-        result.innerHTML = `<div class="card warn">${data.detail}</div>`;
-        return;
+      if (!response.ok) throw new Error(data.detail || "Request failed");
+      return data;
+    }
+
+    async function loadClaims() {
+      try {
+        const claims = await getJson("/api/claims");
+        claimsElement.innerHTML = claims.map(claim => `
+          <button class="claim" data-claim="${escapeHtml(claim.claim_id)}">
+            <strong>${escapeHtml(claim.claim_id)}</strong>
+            <span>${escapeHtml(claim.patient_name)}</span>
+            <span>${escapeHtml(claim.hospital)}</span>
+          </button>`).join("");
+        document.querySelectorAll("[data-claim]").forEach(button =>
+          button.addEventListener("click", () => loadClaim(button.dataset.claim)));
+        if (claims.length) loadClaim(claims[0].claim_id);
+      } catch (error) {
+        claimsElement.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
       }
-      const checks = data.ocr_validation.checks.map(check =>
-        `<li class="${check.matched ? "ok" : "warn"}">${check.field}: ${check.matched ? "matched" : "not matched"} (${check.expected})</li>`
-      ).join("");
-      result.innerHTML = `
-        <div class="card">
-          <h2>${data.recommendation}</h2>
-          <p>${data.recommendation_reason}</p>
-          <p><strong>Patient:</strong> ${data.patient.name}</p>
-          <p><strong>Hospital:</strong> ${data.hospital.name}</p>
-          <p><strong>Policy:</strong> ${data.policy.name}</p>
-          <h3>OCR validation</h3><ul>${checks}</ul>
-          <h3>Hospital bill OCR text</h3><pre>${data.documents.hospital_bill.ocr_text}</pre>
-        </div>`;
-    });
+    }
+
+    async function loadClaim(claimId) {
+      document.querySelectorAll("[data-claim]").forEach(button =>
+        button.classList.toggle("active", button.dataset.claim === claimId));
+      detailsElement.innerHTML = `<div class="card"><p class="muted">Loading ${escapeHtml(claimId)}...</p></div>`;
+      try {
+        const [decision, risk] = await Promise.all([
+          getJson(`/api/claims/${encodeURIComponent(claimId)}/decision`),
+          getJson(`/api/claims/${encodeURIComponent(claimId)}/risk`)
+        ]);
+        const findings = risk.findings.length
+          ? risk.findings.map(finding => `
+              <div class="finding ${escapeHtml(finding.severity)}">
+                <strong>${escapeHtml(finding.severity)} · ${escapeHtml(finding.code)}</strong>
+                <div>${escapeHtml(finding.message)}</div>
+              </div>`).join("")
+          : "<p> No anomaly findings. This claim passed the configured screening checks.</p>";
+        detailsElement.innerHTML = `
+          <section class="card">
+            <h2>${escapeHtml(decision.claim_id)} · ${escapeHtml(decision.patient_name)}</h2>
+            <p class="muted">${escapeHtml(decision.hospital)}</p>
+            <div class="grid">
+              <div class="metric">Decision<strong>${escapeHtml(decision.decision)}</strong></div>
+              <div class="metric">Claimed<strong>${money(decision.claimed_amount)}</strong></div>
+              <div class="metric">Payable<strong>${money(decision.payable_amount)}</strong></div>
+            </div>
+          </section>
+          <section class="card">
+            <h3>Calculation and policy reasons</h3>
+            <p>Eligible before co-payment: <strong>${money(decision.eligible_amount_before_copay)}</strong></p>
+            <p>Co-payment: <strong>${money(decision.copayment_amount)}</strong></p>
+            <p>Deductible: <strong>${money(decision.deductible_amount)}</strong></p>
+            <ul>${decision.reasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
+          </section>
+          <section class="card">
+            <h3>Risk screening</h3>
+            <p><strong>${escapeHtml(risk.risk_level.toUpperCase())}</strong> risk · score ${escapeHtml(risk.score)} ·
+              ${risk.manual_review_required ? "manual review required" : "no manual review signal"}</p>
+            ${findings}
+          </section>`;
+        detailsElement.insertAdjacentHTML("beforeend", `
+          <section class="card">
+            <h3>Human review action</h3>
+            <label>Reviewer ID<input id="reviewer-id" placeholder="employee-123"></label>
+            <label>Note<textarea id="review-note" rows="3" placeholder="Explain the review decision or requested documents"></textarea></label>
+            <div class="actions">
+              <button class="primary" data-action="approved">Approve claim</button>
+              <button data-action="rejected">Reject claim</button>
+              <button data-action="documents_requested">Request documents</button>
+            </div>
+            <div id="action-message"></div>
+            <div class="history"><h3>Audit history</h3><div id="audit-history">Loading...</div></div>
+          </section>`);
+        await loadAuditHistory(claimId);
+        document.querySelectorAll("[data-action]").forEach(button =>
+          button.addEventListener("click", () => submitAction(claimId, button.dataset.action)));
+      } catch (error) {
+        detailsElement.innerHTML = `<div class="card error">${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function loadAuditHistory(claimId) {
+      const data = await getJson(`/api/claims/${encodeURIComponent(claimId)}/review-actions`);
+      const history = document.querySelector("#audit-history");
+      history.innerHTML = data.actions.length
+        ? data.actions.map(item => `<p><strong>${escapeHtml(item.action)}</strong> by
+          ${escapeHtml(item.reviewer_id)}<br><span class="muted">${escapeHtml(item.note || "No note")} ·
+          ${escapeHtml(item.created_at)}</span></p>`).join("")
+        : "<p class='muted'>No employee action recorded.</p>";
+    }
+
+    async function submitAction(claimId, action) {
+      const message = document.querySelector("#action-message");
+      try {
+        const data = await getJson(`/api/claims/${encodeURIComponent(claimId)}/review-actions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action,
+            reviewer_id: document.querySelector("#reviewer-id").value,
+            note: document.querySelector("#review-note").value
+          })
+        });
+        message.innerHTML = `<p class="muted">Recorded ${escapeHtml(data.action.action)}.</p>`;
+        await loadAuditHistory(claimId);
+      } catch (error) {
+        message.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+      }
+    }
+
+    document.querySelector("#refresh").addEventListener("click", loadClaims);
+    loadClaims();
   </script>
 </body>
 </html>

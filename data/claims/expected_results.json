@@ -12,9 +12,9 @@
     "folder": "claim_clm_1002",
     "expected_decision": "partially_eligible",
     "expected_claimed_amount": "80000.00",
-    "expected_eligible_amount_before_copay": "68000.00",
+    "expected_eligible_amount_before_copay": "65000.00",
     "expected_copay_percent": "20",
-    "expected_payable_amount": "54400.00"
+    "expected_payable_amount": "52000.00"
   },
   {
     "claim_id": "CLM-1003",

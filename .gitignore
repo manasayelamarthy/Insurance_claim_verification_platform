@@ -12,3 +12,4 @@ htmlcov/
 data/users/*/processed/
 data/users/*/uploads/
 data/users/*/results/
+data/review_audit.sqlite3

@@ -12,6 +12,7 @@ dependencies = [
     "Pillow>=10,<12",
     "pypdf>=5,<7",
     "pytesseract>=0.3.13,<1",
+    "python-multipart>=0.0.20,<1",
     "uvicorn[standard]>=0.30,<1",
 ]
 
