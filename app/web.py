@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import JSONResponse
 
 from app.insurance.decision import (
     decide_claim,
@@ -15,6 +16,7 @@ from app.insurance.decision import (
 )
 from app.insurance.documents import extract_document
 from app.insurance.database import list_users as list_database_users
+from app.insurance.auth import AuthenticationError, authenticate, decode_token
 from app.insurance.llm import LLMConfigurationError, LLMRequestError, answer_with_llm
 from app.insurance.audit import (
     action_as_dict,
@@ -45,6 +47,11 @@ class ReviewActionRequest(BaseModel):
     note: str = ""
 
 
+class LoginRequest(BaseModel):
+    identifier: str
+    password: str
+
+
 @app.get("/")
 def home() -> FileResponse:
     frontend_index = FRONTEND_DIST / "index.html"
@@ -56,12 +63,61 @@ def home() -> FileResponse:
     return FileResponse(frontend_index)
 
 
+@app.post("/api/auth/login")
+def login(request: LoginRequest) -> dict[str, str]:
+    try:
+        return authenticate(PROJECT_ROOT, request.identifier, request.password)
+    except AuthenticationError as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
+
+
+@app.get("/api/me")
+def current_user(request: Request) -> dict[str, str]:
+    identity = request.state.auth
+    if identity["role"] == "employee":
+        return {
+            "user_id": identity["user_id"],
+            "role": identity["role"],
+            "display_name": identity["user_id"],
+        }
+    users = list_database_users(PROJECT_ROOT)
+    user = next(
+        (item for item in users if item["user_id"] == identity["user_id"]), None
+    )
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authenticated user was not found.")
+    return {"role": identity["role"], **user}
+
+
 if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
 
 
+@app.middleware("http")
+async def authenticate_api_requests(request: Request, call_next):
+    if request.url.path.startswith("/api") and request.url.path != "/api/auth/login":
+        authorization = request.headers.get("Authorization", "")
+        if not authorization.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401, content={"detail": "Authentication required."}
+            )
+        try:
+            request.state.auth = decode_token(authorization[7:])
+        except AuthenticationError as error:
+            return JSONResponse(status_code=401, content={"detail": str(error)})
+    return await call_next(request)
+
+
+def require_role(request: Request | None, role: str) -> None:
+    if request is None:
+        return
+    if request.state.auth["role"] != role:
+        raise HTTPException(status_code=403, detail="This account is not authorized.")
+
+
 @app.get("/api/users")
-def list_users() -> list[dict[str, str]]:
+def list_users(request: Request = None) -> list[dict[str, str]]:
+    require_role(request, "employee")
     try:
         return list_database_users(PROJECT_ROOT)
     except (OSError, RuntimeError) as error:
@@ -69,7 +125,9 @@ def list_users() -> list[dict[str, str]]:
 
 
 @app.get("/api/users/{user_id}/review")
-def review_user(user_id: str) -> dict:
+def review_user(user_id: str, request: Request = None) -> dict:
+    if request is not None and request.state.auth["role"] == "member" and request.state.auth["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Members can only view their own review.")
     try:
         return create_claim_review(PROJECT_ROOT, user_id)
     except (OSError, ValueError, RuntimeError) as error:
@@ -77,7 +135,8 @@ def review_user(user_id: str) -> dict:
 
 
 @app.get("/api/claims")
-def list_claims() -> list[dict[str, str]]:
+def list_claims(request: Request = None) -> list[dict[str, str]]:
+    require_role(request, "employee")
     claims_directory = PROJECT_ROOT / "data" / "claims"
     claims = []
     for folder in sorted(claims_directory.glob("claim_clm_*")):
@@ -94,7 +153,8 @@ def list_claims() -> list[dict[str, str]]:
 
 
 @app.get("/api/claims/{claim_id}/decision")
-def claim_decision(claim_id: str) -> dict:
+def claim_decision(claim_id: str, request: Request = None) -> dict:
+    require_role(request, "employee")
     folder_name = claim_id.lower().replace("-", "_")
     folder = PROJECT_ROOT / "data" / "claims" / f"claim_{folder_name}"
     try:
@@ -120,8 +180,9 @@ def claim_decision(claim_id: str) -> dict:
 
 
 @app.get("/api/claims/{claim_id}/risk")
-def claim_risk(claim_id: str) -> dict[str, object]:
+def claim_risk(claim_id: str, request: Request = None) -> dict[str, object]:
     """Return explainable anomaly findings for employee review."""
+    require_role(request, "employee")
     folder_name = claim_id.lower().replace("-", "_")
     folder = PROJECT_ROOT / "data" / "claims" / f"claim_{folder_name}"
     try:
@@ -146,8 +207,9 @@ def claim_risk(claim_id: str) -> dict[str, object]:
 
 
 @app.get("/api/claims/{claim_id}/review-actions")
-def review_actions(claim_id: str) -> dict[str, object]:
+def review_actions(claim_id: str, request: Request = None) -> dict[str, object]:
     """Return the immutable review history for a claim."""
+    require_role(request, "employee")
     if not _claim_folder(claim_id).is_dir():
         raise HTTPException(status_code=404, detail=f"Unknown claim: {claim_id}")
     return {
@@ -161,9 +223,10 @@ def review_actions(claim_id: str) -> dict[str, object]:
 
 @app.post("/api/claims/{claim_id}/review-actions")
 def create_review_action(
-    claim_id: str, request: ReviewActionRequest
+    claim_id: str, request: ReviewActionRequest, http_request: Request = None
 ) -> dict[str, object]:
     """Record an employee's approval, rejection, or document request."""
+    require_role(http_request, "employee")
     if not _claim_folder(claim_id).is_dir():
         raise HTTPException(status_code=404, detail=f"Unknown claim: {claim_id}")
     try:
@@ -186,9 +249,10 @@ def _claim_folder(claim_id: str) -> Path:
 
 @app.post("/api/claims/{claim_id}/documents")
 async def upload_claim_document(
-    claim_id: str, document: UploadFile = File(...)
+    claim_id: str, request: Request = None, document: UploadFile = File(...)
 ) -> dict[str, str]:
     """Save and extract one document for a claim."""
+    require_role(request, "employee")
     folder_name = claim_id.lower().replace("-", "_")
     claim_folder = PROJECT_ROOT / "data" / "claims" / f"claim_{folder_name}"
     if not claim_folder.is_dir():

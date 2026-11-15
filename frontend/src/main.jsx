@@ -16,9 +16,12 @@ const formatMoney = (value) =>
   }).format(Number(value || 0));
 
 async function api(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = localStorage.getItem("claimpilot_token");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   let response;
   try {
-    response = await fetch(path, options);
+    response = await fetch(path, { ...options, headers });
   } catch {
     throw new Error(
       "Backend is unavailable. Start FastAPI on http://127.0.0.1:8000."
@@ -37,40 +40,35 @@ function App() {
 
   if (!session) return <LoginPage onLogin={setSession} />;
   return session.role === "employee" ? (
-    <EmployeeDashboard onLogout={() => setSession(null)} />
+    <EmployeeDashboard onLogout={() => { localStorage.removeItem("claimpilot_token"); setSession(null); }} />
   ) : (
-    <UserPortal userId={session.userId} onLogout={() => setSession(null)} />
+    <UserPortal userId={session.userId} onLogout={() => { localStorage.removeItem("claimpilot_token"); setSession(null); }} />
   );
 }
 
 function LoginPage({ onLogin }) {
   const [role, setRole] = useState("employee");
-  const [employeeId, setEmployeeId] = useState("");
-  const [users, setUsers] = useState([]);
-  const [userId, setUserId] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    api("/api/users")
-      .then((data) => {
-        setUsers(data);
-        setUserId(data[0]?.user_id || "");
-      })
-      .catch((requestError) => setError(requestError.message));
-  }, []);
-
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
-    if (role === "employee" && !employeeId.trim()) {
-      setError("Enter your employee ID to continue.");
+    if (!identifier.trim() || !password) {
+      setError("Enter your ID and password to continue.");
       return;
     }
-    if (role === "user" && !userId) {
-      setError("Select a member account to continue.");
-      return;
+    try {
+      const session = await api("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password })
+      });
+      localStorage.setItem("claimpilot_token", session.access_token);
+      onLogin({ role: session.role, userId: session.user_id });
+    } catch (requestError) {
+      setError(requestError.message);
     }
-    setError("");
-    onLogin({ role, userId: role === "user" ? userId : null });
   }
 
   return (
@@ -89,10 +87,11 @@ function LoginPage({ onLogin }) {
             </button>
           </div>
           {role === "employee" ? (
-            <label className="field-label login-field">Employee ID<input value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} placeholder="e.g. EMP-1024" autoFocus /></label>
+            <label className="field-label login-field">Employee ID<input value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="e.g. employee-001" autoFocus /></label>
           ) : (
-            <label className="field-label login-field">Member account<select value={userId} onChange={(event) => setUserId(event.target.value)}>{users.map((user) => <option value={user.user_id} key={user.user_id}>{user.patient_name} · {user.member_id}</option>)}</select></label>
+            <label className="field-label login-field">Member ID or user ID<input value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="e.g. user_001 or MRN-1039485" /></label>
           )}
+          <label className="field-label login-field">Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" /></label>
           {error && <div className="login-error">{error}</div>}
           <button className="login-button">{role === "employee" ? "Open employee dashboard" : "Open member portal"} <span>→</span></button>
         </form>
@@ -267,7 +266,7 @@ function Topbar({ onRefresh, onLogout }) {
 }
 
 function UserPortal({ userId, onLogout }) {
-  const [users, setUsers] = useState([]);
+  const [user, setUser] = useState(null);
   const [review, setReview] = useState(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
@@ -276,23 +275,19 @@ function UserPortal({ userId, onLogout }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api("/api/users")
-      .then((data) => {
-        setUsers(data);
-      })
+    api("/api/me")
+      .then(setUser)
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const user = users.find((item) => item.user_id === userId);
-
   useEffect(() => {
-    if (!userId) return;
+    if (!user) return;
     setReview(null);
-    api(`/api/users/${encodeURIComponent(userId)}/review`)
+    api(`/api/users/${encodeURIComponent(user.user_id)}/review`)
       .then(setReview)
       .catch((requestError) => setError(requestError.message));
-  }, [userId]);
+  }, [user]);
 
   async function askQuestion(event) {
     event.preventDefault();

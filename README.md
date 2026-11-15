@@ -22,6 +22,7 @@ identity fields, and gives a claims officer a review-ready result.
 - Screen claims for explainable anomalies and manual-review signals
 - Record employee approval, rejection, and document-request actions with audit history
 - Persist curated member profiles and policy assignments in SQLite
+- Authenticate employees and members with JWT access tokens and PBKDF2 password hashes
 - Return a human-review recommendation without making an automatic denial
 
 ## Run tests
@@ -82,6 +83,16 @@ Copy-Item .env.example .env
 When `GEMINI_API_KEY` is present, it takes priority over `LLM_API_KEY` and the
 native Gemini `generateContent` API is used.
 
+Authentication requires a local JWT secret:
+
+```powershell
+$env:APP_JWT_SECRET = "replace-with-a-long-random-secret"
+```
+
+For the local synthetic seed, use `employee-001` / `employee123` for the
+employee dashboard, or `user_001` / `member123` for the member portal. Replace
+these demo passwords and configure a strong secret before deployment.
+
 `LLM_API_URL` can point to a compatible local server such as Ollama. The
 `POST /api/policies/ask` endpoint returns an explicit error when the provider is
 not configured or unavailable; it never substitutes an ungrounded answer.
@@ -94,10 +105,9 @@ The React app has two views:
   claim review status, and policy questions answered from the member's assigned
   policy with page citations.
 
-The application starts with a role-selection screen. Employees enter an
-employee ID to open the employee dashboard; members select their account to
-open their member portal. The current role selection is demo authentication
-until real credentials and session authorization are added.
+The application starts with a role-selection screen. Employees and members
+enter their identifier and password; the backend returns a JWT and enforces
+role-specific access to the dashboard APIs.
 
 The member database is initialized at `data/insurance.sqlite3` from the curated
 mapping on first use. It currently contains **5 users**, each with a member ID,
