@@ -21,6 +21,7 @@ identity fields, and gives a claims officer a review-ready result.
 - Generate policy answers with an OpenAI-compatible LLM using retrieved evidence only
 - Screen claims for explainable anomalies and manual-review signals
 - Record employee approval, rejection, and document-request actions with audit history
+- Persist curated member profiles and policy assignments in SQLite
 - Return a human-review recommendation without making an automatic denial
 
 ## Run tests
@@ -37,14 +38,29 @@ Install dependencies:
 pip install -e .
 ```
 
-Start the API and browser interface:
+Start the API:
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.web:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. The employee dashboard shows the claim queue,
-decision calculation, policy reasons, and anomaly findings for the selected claim.
+Open `http://127.0.0.1:8000` after building the React frontend, or run the
+frontend development server at `http://127.0.0.1:5173`.
+
+Build and run the React frontend:
+
+```powershell
+# Terminal 1: start the FastAPI backend from the repository root
+.\.venv\Scripts\python.exe -m uvicorn app.web:app --reload
+
+# Terminal 2: start the React development server
+cd .\frontend
+npm install
+npm run dev
+```
+
+For a production-style build, run `npm run build`; FastAPI serves the generated
+`frontend/dist` dashboard automatically.
 
 To enable LLM-backed policy answers, configure an OpenAI-compatible provider before
 starting the server:
@@ -55,9 +71,39 @@ $env:LLM_API_URL = "https://api.openai.com/v1/chat/completions"
 $env:LLM_MODEL = "gpt-4o-mini"
 ```
 
+Google Gemini can be used directly with a Google AI Studio key:
+
+```powershell
+Copy-Item .env.example .env
+# Edit .env locally and replace the placeholder with your key.
+# The current supported default model is gemini-3.8-flash.
+```
+
+When `GEMINI_API_KEY` is present, it takes priority over `LLM_API_KEY` and the
+native Gemini `generateContent` API is used.
+
 `LLM_API_URL` can point to a compatible local server such as Ollama. The
 `POST /api/policies/ask` endpoint returns an explicit error when the provider is
 not configured or unavailable; it never substitutes an ungrounded answer.
+
+The React app has two views:
+
+- **Employee dashboard**: claim queue, deterministic decision breakdown, risk
+  findings, review actions, and audit history.
+- **Member portal**: member profile, assigned policy, OCR document verification,
+  claim review status, and policy questions answered from the member's assigned
+  policy with page citations.
+
+The application starts with a role-selection screen. Employees enter an
+employee ID to open the employee dashboard; members select their account to
+open their member portal. The current role selection is demo authentication
+until real credentials and session authorization are added.
+
+The member database is initialized at `data/insurance.sqlite3` from the curated
+mapping on first use. It currently contains **5 users**, each with a member ID,
+hospital, insurer, assigned policy file, and policy name. The seed is
+idempotent, so updated curated records can be synchronized without creating
+duplicates.
 
 The synthetic claim decision API is also available at:
 

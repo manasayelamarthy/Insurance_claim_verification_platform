@@ -42,6 +42,18 @@ class LLMTests(unittest.TestCase):
         self.assertEqual(settings.api_url, "http://localhost:11434/v1/chat/completions")
         self.assertEqual(settings.model, "local-model")
 
+    def test_loads_google_configuration(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"GEMINI_API_KEY": "test-key", "GEMINI_MODEL": "gemini-test"},
+            clear=True,
+        ):
+            settings = load_settings()
+
+        self.assertEqual(settings.provider, "google")
+        self.assertEqual(settings.model, "gemini-test")
+        self.assertIn("generateContent", settings.api_url)
+
     @patch("app.insurance.llm.request.urlopen", return_value=FakeResponse())
     def test_sends_retrieved_evidence_to_llm(self, urlopen) -> None:
         result = PolicySearchResult(2, "Waiting Period", "Waiting period is 30 days.", 0.8)

@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.insurance.decision import (
     decide_claim,
@@ -13,6 +14,7 @@ from app.insurance.decision import (
     read_policy,
 )
 from app.insurance.documents import extract_document
+from app.insurance.database import list_users as list_database_users
 from app.insurance.llm import LLMConfigurationError, LLMRequestError, answer_with_llm
 from app.insurance.audit import (
     action_as_dict,
@@ -28,6 +30,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 app = FastAPI(title="Insurance Claim Verification Platform")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 AUDIT_DATABASE = PROJECT_ROOT / "data" / "review_audit.sqlite3"
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 
 class PolicyQuestion(BaseModel):
@@ -44,31 +47,25 @@ class ReviewActionRequest(BaseModel):
 
 @app.get("/")
 def home() -> FileResponse:
-    return FileResponse(PROJECT_ROOT / "web" / "index.html")
+    frontend_index = FRONTEND_DIST / "index.html"
+    if not frontend_index.exists():
+        raise HTTPException(
+            status_code=503,
+            detail="Frontend build is unavailable. Run npm run build in the frontend directory.",
+        )
+    return FileResponse(frontend_index)
+
+
+if FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
 
 
 @app.get("/api/users")
 def list_users() -> list[dict[str, str]]:
-    import json
-
-    mapping = json.loads(
-        (
-            PROJECT_ROOT
-            / "data"
-            / "external"
-            / "curated"
-            / "user_policy_mapping.json"
-        ).read_text(encoding="utf-8")
-    )
-    return [
-        {
-            "user_id": item["user_id"],
-            "patient_name": item["patient_name"],
-            "hospital": item["hospital"],
-            "insurer": item["insurer"],
-        }
-        for item in mapping["users"]
-    ]
+    try:
+        return list_database_users(PROJECT_ROOT)
+    except (OSError, RuntimeError) as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @app.get("/api/users/{user_id}/review")
