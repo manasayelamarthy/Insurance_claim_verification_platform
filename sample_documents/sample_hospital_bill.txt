@@ -1,0 +1,30 @@
+SAMPLE HOSPITAL BILL - SYNTHETIC DATA
+For testing only - not a real medical or financial document
+
+HOSPITAL: CityCare Multispeciality Hospital
+ADDRESS: 18 Lake View Road, Hyderabad
+PHONE: 040-4000-1234
+
+Bill Number: SAMPLE-BILL-2026-001
+Bill Date: 2026-11-15
+Patient Name: Ananya Rao
+Member ID: SAMPLE-MEMBER-001
+Admission Date: 2026-11-10
+Discharge Date: 2026-11-14
+
+DESCRIPTION                         AMOUNT (INR)
+Room and nursing charges              20,000.00
+Doctor consultation                    8,000.00
+Diagnostic tests                       7,500.00
+Medicines and supplies                12,500.00
+Procedure charges                     35,000.00
+                                      ----------
+Gross hospital bill                   83,000.00
+Discount                               3,000.00
+                                      ----------
+Net amount claimed                    80,000.00
+
+Payment status: Paid
+Payment reference: SAMPLE-PAYMENT-001
+
+This synthetic document is created for ClaimPilot upload testing.

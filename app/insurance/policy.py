@@ -8,7 +8,16 @@ class PolicyError(ValueError):
 
 
 def read_policy_text(policy_file: Path) -> str:
-    """Read text from one assigned policy PDF."""
+    """Read text from one assigned policy PDF or text file."""
+    if policy_file.suffix.lower() == ".txt":
+        try:
+            text = policy_file.read_text(encoding="utf-8").strip()
+        except OSError as error:
+            raise PolicyError(f"Unable to read policy text: {policy_file.name}") from error
+        if not text:
+            raise PolicyError(f"Policy text contains no readable text: {policy_file.name}")
+        return text
+
     try:
         import pypdf
     except ImportError as error:

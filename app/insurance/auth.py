@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from dotenv import load_dotenv
 
+from app.insurance.database import change_password as update_password
 from app.insurance.database import find_account, verify_password
 
 load_dotenv()
@@ -24,7 +25,7 @@ def jwt_secret() -> str:
 
 def authenticate(
     project_root, identifier: str, password: str
-) -> dict[str, str]:
+) -> dict[str, object]:
     account = find_account(project_root, identifier.strip())
     if not account or not verify_password(password, account["password_hash"]):
         raise AuthenticationError("Invalid credentials.")
@@ -39,7 +40,17 @@ def authenticate(
         "user_id": account["account_id"],
         "role": account["role"],
         "display_name": account["patient_name"],
+        "must_change_password": bool(account["password_is_temporary"]),
     }
+
+
+def change_password(
+    project_root, account_id: str, current_password: str, new_password: str
+) -> None:
+    try:
+        update_password(project_root, account_id, current_password, new_password)
+    except ValueError as error:
+        raise AuthenticationError(str(error)) from error
 
 
 def decode_token(token: str) -> dict[str, str]:

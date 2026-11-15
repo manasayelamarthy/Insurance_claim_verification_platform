@@ -22,6 +22,9 @@ identity fields, and gives a claims officer a review-ready result.
 - Screen claims for explainable anomalies and manual-review signals
 - Record employee approval, rejection, and document-request actions with audit history
 - Persist curated member profiles and policy assignments in SQLite
+- Persist claim metadata, document hashes, calculated decisions, and claim status history in SQLite
+- Let members upload replacement bills or discharge summaries while retaining curated local defaults
+- Let new members select a policy, create an account, submit a claim amount, and track an estimated payable amount
 - Authenticate employees and members with JWT access tokens and PBKDF2 password hashes
 - Return a human-review recommendation without making an automatic denial
 
@@ -90,8 +93,9 @@ $env:APP_JWT_SECRET = "replace-with-a-long-random-secret"
 ```
 
 For the local synthetic seed, use `employee-001` / `employee123` for the
-employee dashboard, or `user_001` / `member123` for the member portal. Replace
-these demo passwords and configure a strong secret before deployment.
+employee dashboard, or `user_001` / `member123` for the member portal on first
+login. The application forces each seeded account to create a new password of
+at least 12 characters. Configure a strong secret before deployment.
 
 `LLM_API_URL` can point to a compatible local server such as Ollama. The
 `POST /api/policies/ask` endpoint returns an explicit error when the provider is
@@ -109,11 +113,12 @@ The application starts with a role-selection screen. Employees and members
 enter their identifier and password; the backend returns a JWT and enforces
 role-specific access to the dashboard APIs.
 
-The member database is initialized at `data/insurance.sqlite3` from the curated
-mapping on first use. It currently contains **5 users**, each with a member ID,
-hospital, insurer, assigned policy file, and policy name. The seed is
-idempotent, so updated curated records can be synchronized without creating
-duplicates.
+The SQLite database is initialized at `data/insurance.sqlite3` from the curated
+mapping and claim folders on first use. It currently contains **5 users** and
+**3 synthetic claims**, with document metadata and SHA-256 hashes. Document
+binaries remain in the local claim storage folders; decisions and claim status
+history are persisted in SQLite. The seed is idempotent, so updated curated
+records can be synchronized without creating duplicates.
 
 The synthetic claim decision API is also available at:
 
@@ -127,6 +132,68 @@ POST /api/claims/CLM-1001/documents
 GET /api/policies/search?policy_file=policies/hdfc-ergo/energy-diabetes-hypertension__wordings.pdf&question=What%20is%20the%20room%20limit%3F
 POST /api/policies/ask
 ```
+
+Members can upload a replacement document through:
+
+```text
+POST /api/users/{user_id}/documents
+```
+
+Choose `hospital_bill` or `discharge_summary` as `document_type` and send the
+file as multipart form data. If no upload exists, the curated local document is
+used automatically.
+
+New members can use the **Create an account** link on the sign-in screen. They
+select a seeded policy template, enter the amount shown on their bill, and then
+upload the hospital bill and discharge summary from the member portal. The
+generated claim appears in the employee queue with a `documents_pending` status,
+and the member sees an estimated payable amount until employee review is
+complete.
+
+## Deployment shape
+
+The current application should not be deployed entirely to Vercel yet. Vercel
+is suitable for the React frontend, but the FastAPI backend currently depends
+on persistent SQLite and local document files. Vercel serverless storage is not
+reliable for those runtime files, and the current OCR flow requires a
+Tesseract executable.
+
+For a practical deployment:
+
+1. Deploy the React frontend to Vercel.
+2. Deploy the FastAPI backend to Render, Railway, Fly.io, or a similar
+   persistent service.
+3. Move SQLite data to PostgreSQL.
+4. Move uploaded documents to S3-compatible object storage or Supabase
+   Storage.
+5. Configure the frontend API base URL and backend CORS for the Vercel domain.
+6. Configure `APP_JWT_SECRET`, database, storage, and LLM settings as platform
+   secrets rather than committing them.
+
+After those changes, the frontend can remain on Vercel while the API, database,
+OCR worker, and document storage run on services designed for persistent
+workloads.
+
+## Run the complete application with Docker
+
+The included Docker image keeps the current architecture together: FastAPI,
+the built React dashboard, SQLite, local claim files, and Tesseract OCR.
+
+```powershell
+docker build -t claimpilot .
+docker run --rm -p 8000:8000 `
+  -e APP_JWT_SECRET="replace-with-a-long-random-secret" `
+  -e GEMINI_API_KEY="your-key-if-needed" `
+  -v claimpilot-data:/app/data `
+  claimpilot
+```
+
+Open `http://localhost:8000`. The `/app/data` volume is required so uploaded
+documents, SQLite databases, and review history survive container restarts.
+For deployment, use a Docker-capable service with a persistent volume, such as
+Railway, Render with a persistent disk, or Fly.io with a volume. This is the
+closest way to deploy the current application without changing its storage
+architecture.
 
 The workflow is:
 

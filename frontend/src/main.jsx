@@ -35,10 +35,67 @@ async function api(path, options = {}) {
   return data;
 }
 
+async function openProtectedDocument(path) {
+  const popup = window.open("about:blank", "_blank");
+  if (!popup) throw new Error("Allow pop-ups to open claim documents.");
+  const token = localStorage.getItem("claimpilot_token");
+  const response = await fetch(path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!response.ok) {
+    popup.close();
+    throw new Error(`Unable to open document (${response.status})`);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  popup.location = url;
+}
+
 function App() {
   const [session, setSession] = useState(null);
+  const [signup, setSignup] = useState(false);
+  const [restoringSession, setRestoringSession] = useState(true);
 
-  if (!session) return <LoginPage onLogin={setSession} />;
+  useEffect(() => {
+    const token = localStorage.getItem("claimpilot_token");
+    if (!token) {
+      setRestoringSession(false);
+      return;
+    }
+    api("/api/me")
+      .then((user) => {
+        setSession({
+          role: user.role,
+          userId: user.user_id,
+          mustChangePassword: false
+        });
+      })
+      .catch(() => {
+        localStorage.removeItem("claimpilot_token");
+      })
+      .finally(() => setRestoringSession(false));
+  }, []);
+
+  if (restoringSession) return <LoadingState />;
+
+  if (!session) {
+    return signup ? (
+      <SignupPage onBack={() => setSignup(false)} onLogin={setSession} />
+    ) : (
+      <LoginPage onLogin={setSession} onCreateAccount={() => setSignup(true)} />
+    );
+  }
+  if (session.mustChangePassword) {
+    return (
+      <PasswordSetup
+        role={session.role}
+        onComplete={() => setSession({ ...session, mustChangePassword: false })}
+        onLogout={() => {
+          localStorage.removeItem("claimpilot_token");
+          setSession(null);
+        }}
+      />
+    );
+  }
   return session.role === "employee" ? (
     <EmployeeDashboard onLogout={() => { localStorage.removeItem("claimpilot_token"); setSession(null); }} />
   ) : (
@@ -46,7 +103,7 @@ function App() {
   );
 }
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, onCreateAccount }) {
   const [role, setRole] = useState("employee");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -65,7 +122,11 @@ function LoginPage({ onLogin }) {
         body: JSON.stringify({ identifier, password })
       });
       localStorage.setItem("claimpilot_token", session.access_token);
-      onLogin({ role: session.role, userId: session.user_id });
+      onLogin({
+        role: session.role,
+        userId: session.user_id,
+        mustChangePassword: session.must_change_password
+      });
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -95,7 +156,130 @@ function LoginPage({ onLogin }) {
           {error && <div className="login-error">{error}</div>}
           <button className="login-button">{role === "employee" ? "Open employee dashboard" : "Open member portal"} <span>→</span></button>
         </form>
+        <button type="button" className="link-button" onClick={onCreateAccount}>New member? Create an account</button>
         <p className="login-note">Protected workspace · Your information is handled securely</p>
+      </main>
+    </div>
+  );
+}
+
+function SignupPage({ onBack, onLogin }) {
+  const [options, setOptions] = useState([]);
+  const [form, setForm] = useState({
+    patient_name: "",
+    member_id: "",
+    hospital: "",
+    policy_template: "",
+    claimed_amount: "",
+    password: ""
+  });
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api("/api/auth/signup-options")
+      .then((data) => {
+        setOptions(data);
+        setForm((current) => ({ ...current, policy_template: current.policy_template || data[0]?.template || "" }));
+      })
+      .catch((requestError) => setError(requestError.message));
+  }, []);
+
+  function update(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    if (form.password !== confirmation) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const session = await api("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      localStorage.setItem("claimpilot_token", session.access_token);
+      onLogin({ role: session.role, userId: session.user_id, mustChangePassword: false });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="login-page">
+      <main className="login-card">
+        <div className="brand login-brand"><div className="brand-mark">CP</div><div><strong>ClaimPilot</strong><span>New member registration</span></div></div>
+        <div className="login-copy"><span className="eyebrow blue-eyebrow">GET STARTED</span><h1>Create your member account</h1><p>After registration, upload your bill and discharge summary from the member portal.</p></div>
+        <form onSubmit={submit}>
+          <label className="field-label login-field">Full name<input value={form.patient_name} onChange={(event) => update("patient_name", event.target.value)} required /></label>
+          <label className="field-label login-field">Member ID<input value={form.member_id} onChange={(event) => update("member_id", event.target.value)} placeholder="e.g. MRN-7001001" required /></label>
+          <label className="field-label login-field">Hospital<input value={form.hospital} onChange={(event) => update("hospital", event.target.value)} required /></label>
+          <label className="field-label login-field">Policy<select value={form.policy_template} onChange={(event) => update("policy_template", event.target.value)} required>{options.map((option) => <option value={option.template} key={option.template}>{option.label}</option>)}</select></label>
+          <label className="field-label login-field">Claimed amount<input type="number" min="0.01" step="0.01" value={form.claimed_amount} onChange={(event) => update("claimed_amount", event.target.value)} placeholder="Amount on your bill" required /></label>
+          <label className="field-label login-field">Password<input type="password" minLength="12" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="At least 12 characters" required /></label>
+          <label className="field-label login-field">Confirm password<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required /></label>
+          {error && <div className="login-error">{error}</div>}
+          <button className="login-button" disabled={saving}>{saving ? "Creating account..." : "Create account"} <span>→</span></button>
+        </form>
+        <button type="button" className="link-button" onClick={onBack}>Back to sign in</button>
+      </main>
+    </div>
+  );
+}
+
+function PasswordSetup({ role, onComplete, onLogout }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (newPassword !== confirmation) {
+      setError("New passwords do not match.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+      onComplete();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="login-page">
+      <main className="login-card">
+        <div className="brand login-brand"><div className="brand-mark">CP</div><div><strong>ClaimPilot</strong><span>Secure account setup</span></div></div>
+        <div className="login-copy"><span className="eyebrow blue-eyebrow">FIRST LOGIN</span><h1>Create your password</h1><p>Your temporary {role} password must be replaced before continuing.</p></div>
+        <form onSubmit={submit}>
+          <label className="field-label login-field">Current password<input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoFocus /></label>
+          <label className="field-label login-field">New password<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 12 characters" /></label>
+          <label className="field-label login-field">Confirm new password<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
+          {error && <div className="login-error">{error}</div>}
+          <button className="login-button" disabled={saving}>{saving ? "Saving..." : "Set password"} <span>→</span></button>
+        </form>
+        <button className="secondary-button full-width" onClick={onLogout}>Sign out</button>
       </main>
     </div>
   );
@@ -145,7 +329,8 @@ function EmployeeDashboard({ onLogout }) {
         api(`/api/claims/${encodeURIComponent(claimId)}/risk`),
         api(`/api/claims/${encodeURIComponent(claimId)}/review-actions`)
       ]);
-      setDetails({ decision, risk, audit });
+      const documents = await api(`/api/claims/${encodeURIComponent(claimId)}/documents`);
+      setDetails({ decision, risk, audit, documents });
     } catch (requestError) {
       setError(requestError.message);
       setDetails(null);
@@ -267,11 +452,16 @@ function Topbar({ onRefresh, onLogout }) {
 
 function UserPortal({ userId, onLogout }) {
   const [user, setUser] = useState(null);
+  const [claim, setClaim] = useState(null);
   const [review, setReview] = useState(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
+  const [uploadType, setUploadType] = useState("hospital_bill");
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -284,6 +474,12 @@ function UserPortal({ userId, onLogout }) {
   useEffect(() => {
     if (!user) return;
     setReview(null);
+    if (user.claim_id) {
+      api(`/api/users/${encodeURIComponent(user.user_id)}/claim`)
+        .then(setClaim)
+        .catch((requestError) => setError(requestError.message));
+      return;
+    }
     api(`/api/users/${encodeURIComponent(user.user_id)}/review`)
       .then(setReview)
       .catch((requestError) => setError(requestError.message));
@@ -309,6 +505,35 @@ function UserPortal({ userId, onLogout }) {
       setError(requestError.message);
     } finally {
       setAsking(false);
+    }
+
+  }
+
+  async function uploadDocument(event) {
+    event.preventDefault();
+    if (!uploadFile || !user) return;
+    setUploading(true);
+    setError("");
+    setUploadMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("document_type", uploadType);
+      formData.append("document", uploadFile);
+      await api(`/api/users/${encodeURIComponent(user.user_id)}/documents`, {
+        method: "POST",
+        body: formData
+      });
+      setUploadFile(null);
+      event.target.reset();
+      if (user.claim_id) {
+        setClaim(await api(`/api/users/${encodeURIComponent(user.user_id)}/claim`));
+      }
+      setReview(await api(`/api/users/${encodeURIComponent(user.user_id)}/review`));
+      setUploadMessage(`${uploadFile.name} uploaded successfully. Document verification has been refreshed.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -337,7 +562,8 @@ function UserPortal({ userId, onLogout }) {
         </section>
         {error && <div className="alert alert-error">{error}</div>}
         <section className="user-metric-grid">
-          <Metric label="Claim status" value="Under review" />
+          <Metric label="Claim status" value={claim?.status?.replaceAll("_", " ") || "Under review"} />
+          {claim && <Metric label="Estimated payable" value={formatMoney(claim.payable_amount)} accent />}
           <Metric label="Member ID" value={user?.member_id || "—"} />
           <Metric label="Insurer" value={user?.insurer || "—"} />
         </section>
@@ -361,7 +587,33 @@ function UserPortal({ userId, onLogout }) {
                   {review.issues.length ? review.issues.map((issue) => <div className="user-issue" key={issue}>! {issue}</div>) : <p className="text-success">✓ No document identity issues were detected.</p>}
                 </>
               ) : <p className="muted">Checking your documents...</p>}
+              <form className="upload-form" onSubmit={uploadDocument}>
+                <strong>Submit a replacement document</strong>
+                <p className="muted">Existing local files are used by default. Your upload replaces that document for the next review.</p>
+                <div className="upload-row">
+                  <select value={uploadType} onChange={(event) => setUploadType(event.target.value)}>
+                    <option value="hospital_bill">Hospital bill</option>
+                    <option value="discharge_summary">Discharge summary</option>
+                  </select>
+                  <input type="file" accept=".pdf,.txt,.png,.jpg,.jpeg" onChange={(event) => setUploadFile(event.target.files?.[0] || null)} />
+                </div>
+                {uploadMessage && <div className="form-message">{uploadMessage}</div>}
+                <button className="secondary-button" disabled={uploading || !uploadFile}>{uploading ? "Uploading..." : "Upload document"}</button>
+              </form>
             </Panel>
+            {claim && (
+              <Panel title="Estimated claim outcome" subtitle="Calculated from the selected policy; employee review is still required">
+                <div className="breakdown">
+                  <BreakdownRow label="Claimed amount" value={formatMoney(claim.claimed_amount)} />
+                  <BreakdownRow label="Eligible before co-pay" value={formatMoney(claim.eligible_amount_before_copay)} />
+                  <BreakdownRow label="Estimated payable amount" value={formatMoney(claim.payable_amount)} total />
+                </div>
+                <div className="reason-box">
+                  <strong>Why this estimate?</strong>
+                  <ul>{claim.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                </div>
+              </Panel>
+            )}
           </div>
           <div className="workspace-side">
             <Panel title="Ask your policy" subtitle="Answers use your assigned policy">
@@ -383,7 +635,7 @@ function UserPortal({ userId, onLogout }) {
 }
 
 function ClaimWorkspace({ details, onAction }) {
-  const { decision, risk, audit } = details;
+  const { decision, risk, audit, documents } = details;
   const [note, setNote] = useState("");
   const [reviewerId, setReviewerId] = useState("claims-officer");
   const [submitting, setSubmitting] = useState(false);
@@ -447,6 +699,21 @@ function ClaimWorkspace({ details, onAction }) {
                 <span className="severity">{finding.severity}</span>
               </div>
             )) : <div className="success-empty">✓ No anomalies detected in configured checks.</div>}
+          </Panel>
+          <Panel title="Claim evidence" subtitle="Open the source documents used for review">
+            <div className="document-list">
+              {documents.length ? documents.map((document) => (
+                <button
+                  className="document-row"
+                  key={document.path}
+                  onClick={() => openProtectedDocument(`/api/claims/${encodeURIComponent(decision.claim_id)}/documents/${document.path.split("/").map(encodeURIComponent).join("/")}`).catch((error) => setMessage(error.message))}
+                >
+                  <span className="document-icon">▤</span>
+                  <span><strong>{document.filename}</strong><small>{document.content_type.toUpperCase()} · {Math.ceil(document.size_bytes / 1024)} KB</small></span>
+                  <span className="document-open">Open ↗</span>
+                </button>
+              )) : <p className="muted">No source documents registered.</p>}
+            </div>
           </Panel>
         </div>
         <div className="workspace-side">

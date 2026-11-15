@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import re
+import shutil
+import uuid
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,8 +19,22 @@ from app.insurance.decision import (
     read_policy,
 )
 from app.insurance.documents import extract_document
-from app.insurance.database import list_users as list_database_users
-from app.insurance.auth import AuthenticationError, authenticate, decode_token
+from app.insurance.database import (
+    list_claim_records,
+    list_claim_documents,
+    list_users as list_database_users,
+    create_member_account,
+    register_member_document,
+    register_claim_document,
+    save_claim_decision,
+    update_claim_status,
+)
+from app.insurance.auth import (
+    AuthenticationError,
+    authenticate,
+    change_password,
+    decode_token,
+)
 from app.insurance.llm import LLMConfigurationError, LLMRequestError, answer_with_llm
 from app.insurance.audit import (
     action_as_dict,
@@ -52,6 +70,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class SignupRequest(BaseModel):
+    patient_name: str
+    member_id: str
+    hospital: str
+    policy_template: str
+    claimed_amount: str
+    password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 @app.get("/")
 def home() -> FileResponse:
     frontend_index = FRONTEND_DIST / "index.html"
@@ -64,11 +96,126 @@ def home() -> FileResponse:
 
 
 @app.post("/api/auth/login")
-def login(request: LoginRequest) -> dict[str, str]:
+def login(request: LoginRequest) -> dict[str, object]:
     try:
         return authenticate(PROJECT_ROOT, request.identifier, request.password)
     except AuthenticationError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
+
+
+@app.get("/api/auth/signup-options")
+def signup_options() -> list[dict[str, str]]:
+    options = []
+    for path in sorted((PROJECT_ROOT / "data" / "claims").glob("*/policy_*.txt")):
+        fields = _read_fields(path)
+        options.append(
+            {
+                "template": str(path.relative_to(PROJECT_ROOT)).replace("\\", "/"),
+                "policy_number": fields["Policy Number"],
+                "insurer": fields["Insurer"],
+                "label": f"{fields['Insurer']} · {fields['Policy Number']}",
+            }
+        )
+    return options
+
+
+@app.post("/api/auth/signup")
+def signup(request: SignupRequest) -> dict[str, object]:
+    template = (PROJECT_ROOT / request.policy_template).resolve()
+    claims_root = (PROJECT_ROOT / "data" / "claims").resolve()
+    if claims_root not in template.parents or not template.is_file():
+        raise HTTPException(status_code=400, detail="Invalid policy selection.")
+    try:
+        claimed_amount = Decimal(request.claimed_amount)
+        if claimed_amount <= 0:
+            raise ValueError
+    except (InvalidOperation, ValueError) as error:
+        raise HTTPException(status_code=400, detail="Enter a valid claimed amount.") from error
+    fields = _read_fields(template)
+    user_id = f"member_{uuid.uuid4().hex[:10]}"
+    claim_id = f"CLM-NEW-{uuid.uuid4().hex[:8].upper()}"
+    claim_folder = PROJECT_ROOT / "data" / "claims" / f"claim_{claim_id.lower().replace('-', '_')}"
+    claim_folder.mkdir(parents=True, exist_ok=False)
+    policy_text = _replace_fields(
+        template.read_text(encoding="utf-8"),
+        {
+            "Member ID": request.member_id.strip(),
+            "Policyholder": request.patient_name.strip(),
+        },
+    )
+    policy_path = claim_folder / f"policy_{fields['Policy Number']}.txt"
+    claim_path = claim_folder / f"claim_form_{claim_id}.txt"
+    policy_path.write_text(policy_text, encoding="utf-8")
+    (PROJECT_ROOT / "data" / "external" / "curated" / "users" / user_id).mkdir(
+        parents=True, exist_ok=True
+    )
+    claim_path.write_text(
+        "\n".join(
+            [
+                "HEALTH INSURANCE CLAIM FORM",
+                "",
+                f"Claim Number: {claim_id}",
+                f"Policy Number: {fields['Policy Number']}",
+                f"Member ID: {request.member_id.strip()}",
+                f"Patient Name: {request.patient_name.strip()}",
+                f"Hospital: {request.hospital.strip()}",
+                "Admission Date: Pending",
+                "Discharge Date: Pending",
+                "Diagnosis: Hospitalization",
+                "Treatment: Hospital treatment",
+                f"Claimed Amount: {claimed_amount:.2f}",
+                "Network Hospital: Yes",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    try:
+        create_member_account(
+            PROJECT_ROOT,
+            user_id,
+            request.patient_name.strip(),
+            request.member_id.strip(),
+            request.hospital.strip(),
+            fields["Insurer"],
+            str(template.relative_to(PROJECT_ROOT)).replace("\\", "/"),
+            fields["Policy Number"],
+            request.password,
+            claim_id,
+        )
+    except ValueError as error:
+        shutil.rmtree(claim_folder)
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    from app.insurance.database import initialize_database
+
+    initialize_database(PROJECT_ROOT)
+    update_claim_status(
+        PROJECT_ROOT,
+        claim_id,
+        "documents_pending",
+        "system",
+        "Waiting for member documents.",
+    )
+    try:
+        return authenticate(PROJECT_ROOT, user_id, request.password)
+    except AuthenticationError as error:
+        raise HTTPException(status_code=500, detail="Account setup failed.") from error
+
+
+@app.post("/api/auth/change-password")
+def update_current_password(
+    request: ChangePasswordRequest, http_request: Request
+) -> dict[str, str]:
+    try:
+        change_password(
+            PROJECT_ROOT,
+            http_request.state.auth["user_id"],
+            request.current_password,
+            request.new_password,
+        )
+    except AuthenticationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"message": "Password updated successfully."}
 
 
 @app.get("/api/me")
@@ -89,13 +236,39 @@ def current_user(request: Request) -> dict[str, str]:
     return {"role": identity["role"], **user}
 
 
+@app.get("/api/users/{user_id}/claim")
+def member_claim(user_id: str, request: Request = None) -> dict[str, object]:
+    if request is not None and (
+        request.state.auth["role"] != "member"
+        or request.state.auth["user_id"] != user_id
+    ):
+        raise HTTPException(status_code=403, detail="Members can only view their own claim.")
+    user = next(
+        (item for item in list_database_users(PROJECT_ROOT) if item["user_id"] == user_id),
+        None,
+    )
+    if not user or not user.get("claim_id"):
+        raise HTTPException(status_code=404, detail="No submitted claim found.")
+    result = claim_decision(user["claim_id"])
+    result["status"] = next(
+        (
+            item["status"]
+            for item in list_claim_records(PROJECT_ROOT)
+            if item["claim_id"] == user["claim_id"]
+        ),
+        "under_review",
+    )
+    return result
+
+
 if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
 
 
 @app.middleware("http")
 async def authenticate_api_requests(request: Request, call_next):
-    if request.url.path.startswith("/api") and request.url.path != "/api/auth/login":
+    public_paths = {"/api/auth/login", "/api/auth/signup", "/api/auth/signup-options"}
+    if request.url.path.startswith("/api") and request.url.path not in public_paths:
         authorization = request.headers.get("Authorization", "")
         if not authorization.startswith("Bearer "):
             return JSONResponse(
@@ -134,22 +307,59 @@ def review_user(user_id: str, request: Request = None) -> dict:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
+@app.post("/api/users/{user_id}/documents")
+async def upload_member_document(
+    user_id: str,
+    request: Request,
+    document_type: str = Form(...),
+    document: UploadFile = File(...),
+) -> dict[str, str]:
+    if request.state.auth["role"] != "member" or request.state.auth["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Members can only upload their own documents.")
+    if document_type not in {"hospital_bill", "discharge_summary"}:
+        raise HTTPException(status_code=400, detail="Unsupported document type.")
+    filename = Path(document.filename or "").name
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".txt", ".pdf", ".png", ".jpg", ".jpeg"}:
+        raise HTTPException(status_code=400, detail="Use a PDF, text, PNG, or JPG document.")
+    user_directory = (
+        PROJECT_ROOT / "data" / "external" / "curated" / "users" / user_id
+    )
+    if not user_directory.is_dir():
+        raise HTTPException(status_code=404, detail="Member account was not found.")
+    content = await document.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Document exceeds 10 MB limit.")
+    target = user_directory / "uploads" / f"{document_type}{suffix}"
+    target.parent.mkdir(exist_ok=True)
+    target.write_bytes(content)
+    try:
+        register_member_document(PROJECT_ROOT, user_id, document_type, target)
+        member = next(
+            (item for item in list_database_users(PROJECT_ROOT) if item["user_id"] == user_id),
+            None,
+        )
+        claim_id = member.get("claim_id") if member else None
+        if claim_id:
+            claim_target = _claim_folder(claim_id) / "uploads" / target.name
+            claim_target.parent.mkdir(exist_ok=True)
+            shutil.copy2(target, claim_target)
+            register_claim_document(PROJECT_ROOT, claim_id, claim_target)
+    except (OSError, RuntimeError) as error:
+        target.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Unable to save document metadata.") from error
+    return {
+        "user_id": user_id,
+        "document_type": document_type,
+        "filename": target.name,
+        "message": "Document uploaded. It will replace the default local file for the next review.",
+    }
+
+
 @app.get("/api/claims")
 def list_claims(request: Request = None) -> list[dict[str, str]]:
     require_role(request, "employee")
-    claims_directory = PROJECT_ROOT / "data" / "claims"
-    claims = []
-    for folder in sorted(claims_directory.glob("claim_clm_*")):
-        claim_file = next(folder.glob("claim_form_*.txt"))
-        claim = read_claim_form(claim_file)
-        claims.append(
-            {
-                "claim_id": claim.claim_number,
-                "patient_name": claim.patient_name,
-                "hospital": claim.hospital,
-            }
-        )
-    return claims
+    return list_claim_records(PROJECT_ROOT)
 
 
 @app.get("/api/claims/{claim_id}/decision")
@@ -159,9 +369,14 @@ def claim_decision(claim_id: str, request: Request = None) -> dict:
     folder = PROJECT_ROOT / "data" / "claims" / f"claim_{folder_name}"
     try:
         claim = read_claim_form(next(folder.glob("claim_form_*.txt")))
-        claim = read_hospital_bill(next(folder.glob("hospital_bill_*.pdf")), claim)
+        bill_files = _claim_files(folder, "hospital_bill")
+        if not bill_files:
+            return _pending_claim_decision(claim)
+        if bill_files[0].suffix.lower() == ".pdf":
+            claim = read_hospital_bill(bill_files[0], claim)
         policy = read_policy(next(folder.glob("policy_*.txt")))
         decision = decide_claim(claim, policy)
+        save_claim_decision(PROJECT_ROOT, claim.claim_number, decision)
     except (OSError, StopIteration, ValueError, RuntimeError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -187,8 +402,23 @@ def claim_risk(claim_id: str, request: Request = None) -> dict[str, object]:
     folder = PROJECT_ROOT / "data" / "claims" / f"claim_{folder_name}"
     try:
         claim = read_claim_form(next(folder.glob("claim_form_*.txt")))
-        bill_path = next(folder.glob("hospital_bill_*.pdf"))
-        claim = read_hospital_bill(bill_path, claim)
+        bill_files = _claim_files(folder, "hospital_bill")
+        if not bill_files:
+            return {
+                "claim_id": claim.claim_number,
+                "decision": "pending_documents",
+                "risk_level": "medium",
+                "score": 0,
+                "findings": [
+                    {
+                        "code": "MISSING_HOSPITAL_BILL",
+                        "severity": "medium",
+                        "message": "A hospital bill is required before risk screening can run.",
+                    }
+                ],
+            }
+        if bill_files[0].suffix.lower() == ".pdf":
+            claim = read_hospital_bill(bill_files[0], claim)
         policy_path = next(folder.glob("policy_*.txt"))
         policy = read_policy(policy_path)
         decision = decide_claim(claim, policy)
@@ -221,6 +451,46 @@ def review_actions(claim_id: str, request: Request = None) -> dict[str, object]:
     }
 
 
+@app.get("/api/claims/{claim_id}/documents")
+def claim_documents(claim_id: str, request: Request = None) -> list[dict[str, object]]:
+    require_role(request, "employee")
+    claim_folder = _claim_folder(claim_id).resolve()
+    if not claim_folder.is_dir():
+        raise HTTPException(status_code=404, detail=f"Unknown claim: {claim_id}")
+    documents = []
+    for document in list_claim_documents(PROJECT_ROOT, claim_id):
+        path = (PROJECT_ROOT / document["relative_path"]).resolve()
+        try:
+            relative_path = path.relative_to(claim_folder)
+        except ValueError:
+            continue
+        documents.append(
+            {
+                "filename": document["filename"],
+                "path": str(relative_path).replace("\\", "/"),
+                "content_type": document["content_type"],
+                "size_bytes": document["size_bytes"],
+            }
+        )
+    return documents
+
+
+@app.get("/api/claims/{claim_id}/documents/{document_path:path}")
+def open_claim_document(
+    claim_id: str, document_path: str, request: Request = None
+) -> FileResponse:
+    require_role(request, "employee")
+    claim_folder = _claim_folder(claim_id).resolve()
+    candidate = (claim_folder / document_path).resolve()
+    try:
+        candidate.relative_to(claim_folder)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail="Invalid document path.") from error
+    if not candidate.is_file():
+        raise HTTPException(status_code=404, detail="Document not found.")
+    return FileResponse(candidate, content_disposition_type="inline")
+
+
 @app.post("/api/claims/{claim_id}/review-actions")
 def create_review_action(
     claim_id: str, request: ReviewActionRequest, http_request: Request = None
@@ -237,6 +507,18 @@ def create_review_action(
             request.reviewer_id,
             request.note,
         )
+        status = {
+            "approved": "approved",
+            "rejected": "rejected",
+            "documents_requested": "documents_requested",
+        }[request.action]
+        update_claim_status(
+            PROJECT_ROOT,
+            claim_id.upper(),
+            status,
+            request.reviewer_id,
+            request.note,
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {"action": action_as_dict(action)}
@@ -245,6 +527,47 @@ def create_review_action(
 def _claim_folder(claim_id: str) -> Path:
     folder_name = claim_id.lower().replace("-", "_")
     return PROJECT_ROOT / "data" / "claims" / f"claim_{folder_name}"
+
+
+def _claim_files(folder: Path, prefix: str) -> list[Path]:
+    """Return claim files from the original folder and member upload folder."""
+    candidates = list(folder.glob(f"{prefix}*"))
+    candidates.extend((folder / "uploads").glob(f"{prefix}*"))
+    return sorted(candidates, key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def _pending_claim_decision(claim: object) -> dict[str, object]:
+    return {
+        "claim_id": claim.claim_number,
+        "patient_name": claim.patient_name,
+        "hospital": claim.hospital,
+        "decision": "pending_documents",
+        "claimed_amount": str(claim.claimed_amount),
+        "eligible_amount_before_copay": "0.00",
+        "copayment_amount": "0.00",
+        "deductible_amount": "0.00",
+        "payable_amount": "0.00",
+        "reasons": ["Upload a hospital bill before eligibility can be calculated."],
+    }
+
+
+def _read_fields(path: Path) -> dict[str, str]:
+    return {
+        key.strip(): value.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if ":" in line
+        for key, value in [line.split(":", 1)]
+    }
+
+
+def _replace_fields(text: str, replacements: dict[str, str]) -> str:
+    for key, value in replacements.items():
+        text = re.sub(
+            rf"(?m)^{re.escape(key)}:.*$",
+            f"{key}: {value}",
+            text,
+        )
+    return text
 
 
 @app.post("/api/claims/{claim_id}/documents")
@@ -271,6 +594,7 @@ async def upload_claim_document(
 
     target.parent.mkdir(exist_ok=True)
     target.write_bytes(content)
+    register_claim_document(PROJECT_ROOT, claim_id.upper(), target)
     try:
         extracted = extract_document(target)
     except (OSError, ValueError, RuntimeError) as error:
