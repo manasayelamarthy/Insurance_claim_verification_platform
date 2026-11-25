@@ -20,11 +20,19 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY app ./app
 COPY data ./data
+COPY web ./web
 COPY --from=frontend-build /frontend/dist ./frontend/dist
+
+# Keep a pristine copy of seed data for first-run initialization
+RUN cp -r /app/data /app/seed_data
 
 RUN pip install --no-cache-dir .
 
 EXPOSE 8000
 VOLUME ["/app/data"]
 
-CMD ["sh", "-c", "uvicorn app.web:app --host 0.0.0.0 --port ${PORT}"]
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["sh", "-c", "uvicorn app.web:app --host 0.0.0.0 --port ${PORT:-8000}"]

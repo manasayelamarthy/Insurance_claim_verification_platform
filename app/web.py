@@ -44,13 +44,69 @@ from app.insurance.audit import (
 from app.insurance.policy_search import answer_policy, result_as_dict, search_policy
 from app.insurance.review import create_claim_review
 from app.insurance.risk import assess_claim_risk, risk_as_dict
+from app.insurance.analytics import get_dashboard_stats
+from app.insurance.search_filter import search_claims, get_claim_timeline
+from app.insurance.notifications import notify_claim_status_changed
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-app = FastAPI(title="Insurance Claim Verification Platform")
+app = FastAPI(title="ClaimPilot — Insurance Claim Intelligence Platform")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 AUDIT_DATABASE = PROJECT_ROOT / "data" / "review_audit.sqlite3"
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+LANDING_DIR = PROJECT_ROOT / "web"
+
+
+@app.get("/api/health")
+def health_check() -> dict[str, str]:
+    """Health check endpoint for Fly.io and load balancers."""
+    return {"status": "ok", "version": "2.0.0"}
+
+
+# ── Analytics ────────────────────────────────────────────────────────────────
+
+@app.get("/api/analytics/overview")
+def analytics_overview(request: Request = None) -> dict:
+    """Platform-wide claim metrics for the employee dashboard."""
+    require_role(request, "employee")
+    try:
+        return get_dashboard_stats(PROJECT_ROOT)
+    except (OSError, RuntimeError) as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+# ── Advanced claim search / filter ───────────────────────────────────────────
+
+@app.get("/api/claims/search")
+def search_claims_endpoint(
+    q: str = "",
+    status: str = "",
+    sort_by: str = "updated_at",
+    sort_dir: str = "desc",
+    page: int = 1,
+    page_size: int = 20,
+    request: Request = None,
+) -> dict:
+    """Filtered, sorted, paginated claim search for employees."""
+    require_role(request, "employee")
+    try:
+        return search_claims(PROJECT_ROOT, q, status, sort_by, sort_dir, page, page_size)
+    except (OSError, RuntimeError) as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+# ── Claim timeline ────────────────────────────────────────────────────────────
+
+@app.get("/api/claims/{claim_id}/timeline")
+def claim_timeline(claim_id: str, request: Request = None) -> list:
+    """Full status history / timeline for a claim."""
+    require_role(request, "employee")
+    if not _claim_folder(claim_id).is_dir():
+        raise HTTPException(status_code=404, detail=f"Unknown claim: {claim_id}")
+    try:
+        return get_claim_timeline(PROJECT_ROOT, claim_id)
+    except (OSError, RuntimeError) as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 class PolicyQuestion(BaseModel):
@@ -86,6 +142,19 @@ class ChangePasswordRequest(BaseModel):
 
 @app.get("/")
 def home() -> FileResponse:
+    """Serve landing page at root; fall back to app if no landing page."""
+    landing = LANDING_DIR / "index.html"
+    if landing.exists():
+        return FileResponse(landing)
+    frontend_index = FRONTEND_DIST / "index.html"
+    if frontend_index.exists():
+        return FileResponse(frontend_index)
+    raise HTTPException(status_code=503, detail="Build the frontend: npm run build")
+
+
+@app.get("/app")
+def app_home() -> FileResponse:
+    """Serve the React SPA."""
     frontend_index = FRONTEND_DIST / "index.html"
     if not frontend_index.exists():
         raise HTTPException(
@@ -263,11 +332,13 @@ def member_claim(user_id: str, request: Request = None) -> dict[str, object]:
 
 if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
+if LANDING_DIR.exists():
+    app.mount("/web", StaticFiles(directory=LANDING_DIR), name="landing-assets")
 
 
 @app.middleware("http")
 async def authenticate_api_requests(request: Request, call_next):
-    public_paths = {"/api/auth/login", "/api/auth/signup", "/api/auth/signup-options"}
+    public_paths = {"/api/auth/login", "/api/auth/signup", "/api/auth/signup-options", "/api/health"}
     if request.url.path.startswith("/api") and request.url.path not in public_paths:
         authorization = request.headers.get("Authorization", "")
         if not authorization.startswith("Bearer "):
@@ -519,6 +590,21 @@ def create_review_action(
             request.reviewer_id,
             request.note,
         )
+        # Notify member (non-blocking; stub logs if SMTP not configured)
+        try:
+            users = list_database_users(PROJECT_ROOT)
+            member = next(
+                (u for u in users if u.get("claim_id") == claim_id.upper()), None
+            )
+            if member:
+                notify_claim_status_changed(
+                    member.get("email"),
+                    claim_id.upper(),
+                    status,
+                    request.note,
+                )
+        except Exception:
+            pass  # Notifications must never block the response
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {"action": action_as_dict(action)}

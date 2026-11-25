@@ -1,8 +1,23 @@
-# Insurance Claim Verification Platform
+# ClaimPilot — AI-Powered Insurance Claim Intelligence Platform
 
-This project verifies insurance claim documents. It reads hospital bills and
+ClaimPilot automates insurance claim verification. It reads hospital bills and
 discharge summaries with OCR, loads the assigned policy PDF, validates key
 identity fields, and gives a claims officer a review-ready result.
+
+## ✅ Current capabilities (Phase 1 + Phase 2 MVP)
+
+- **Landing page** at `/` — public marketing site
+- **Member portal** at `/app` — claim submission, document upload, OCR verification, policy Q&A
+- **Employee dashboard** at `/app` — claim queue with search & status filters, decision breakdown,
+  risk findings, claim timeline, review actions, audit history
+- **Analytics overview** — approval rate, processing time, monthly volume, top hospitals
+- **Policy Q&A** — grounded answers from policy PDFs with Gemini/OpenAI + TF-IDF retrieval
+- **OCR verification** — Tesseract extracts and cross-checks identity fields across documents
+- **Deterministic financials** — eligible amount, co-payment, deductible, payable
+- **Risk screening** — explainable anomaly findings per claim
+- **JWT auth** with PBKDF2 passwords, role-based access, immutable audit trail
+- **Email notification stubs** — ready for SMTP/SendGrid wiring
+- **SQLite + local storage** MVP; PostgreSQL/S3 migration-ready
 
 ## Current capabilities
 

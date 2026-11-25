@@ -1,0 +1,16 @@
+# Render.com Blueprint (Free Tier Docker Web Service)
+# Connect this GitHub repo at https://dashboard.render.com/blueprints
+services:
+  - type: web
+    name: claimpilot
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash

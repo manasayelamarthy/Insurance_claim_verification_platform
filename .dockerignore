@@ -8,5 +8,6 @@ htmlcov
 .env
 frontend/node_modules
 frontend/dist
-data/*.sqlite3
-data/review_audit.sqlite3
+# Allow seed SQLite files for Docker build (copied to /app/seed_data)
+# data/*.sqlite3
+# data/review_audit.sqlite3
